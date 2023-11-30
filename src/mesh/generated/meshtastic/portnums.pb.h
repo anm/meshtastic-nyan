@@ -135,6 +135,8 @@ typedef enum _meshtastic_PortNum {
     /* ATAK Forwarder Module https://github.com/paulmandal/atak-forwarder
  ENCODING: libcotshrink */
     meshtastic_PortNum_ATAK_FORWARDER = 257,
+    /* Nearby Yacht Area Network */
+    meshtastic_PortNum_NYAN = 345,
     /* Currently we limit port nums to no higher than this value */
     meshtastic_PortNum_MAX = 511
 } meshtastic_PortNum;
