@@ -1,21 +1,21 @@
 #pragma once
-#include "SinglePortModule.h"
+#include "ProtobufModule.h"
+#include "../mesh/generated/meshtastic/nyan.pb.h"
 
 /**
  */
-class NyanModule : public SinglePortModule, private concurrency::OSThread
-{
+class NyanModule : public ProtobufModule<nyan_telemetry>,
+                   private concurrency::OSThread {
   public:
-    /** Constructor
-     * name is for debugging output
-     */
-  NyanModule() : SinglePortModule("nyan", meshtastic_PortNum_NYAN), concurrency::OSThread("NyanModule") {}
+  /* Constructor name is for debugging output */
+  NyanModule() :
+    ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan_telemetry_msg),
+    concurrency::OSThread("NyanModule") {}
 
   protected:
-    /** Run as part of want_replies handling ..?
-     */
-  virtual meshtastic_MeshPacket *allocReply() override;
+
   virtual int32_t runOnce() override;
+  virtual bool handleReceivedProtobuf(const meshtastic_MeshPacket &mp, nyan_telemetry *telemetry) override;
 
   void send_report();
 };
