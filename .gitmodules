@@ -1,6 +1,8 @@
 [submodule "protobufs"]
 	path = protobufs
-	url = https://github.com/meshtastic/protobufs.git
+	url = git@gitlab.com:riverm/meshtastic-protos-nyan.git
+	branch = nyan
+
 [submodule "meshtestic"]
 	path = meshtestic
 	url = https://github.com/meshtastic/meshTestic
