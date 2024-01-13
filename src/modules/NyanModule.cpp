@@ -17,10 +17,27 @@
 
 #include "os_status.h"
 
+// Vessel data acquired from local NMEA network
+//NyanVessel v_nmea;
+
+// Data from Nyan device sensors
+//NyanVessel v_local;
+
 NyanVessel v;
 
-/* Import NMEA0183 data from a tcp server.
+/*
+  Need running average and max over last reporting period - 10 mins seems to be a standard.
 
+  First do a three second running average, then take the max and mean of
+  that. This was the storage is bounded. Don't need more detail than three
+  seconds.
+*/
+
+/* Weather station reporting period in seconds. */
+constexpr uint16_t met_reporting_period = 600;
+
+
+/* Import NMEA0183 data from a tcp server.
    If not connected, connect.
    Read and parse sentences.
    Add data to ship data model.
@@ -41,7 +58,7 @@ void NMEA_read() {
   const char * host = "209.16.157.57";
 
   if (!WiFi.isConnected()) {
-    LOG_INFO("WiFi not connected");
+    LOG_INFO("WiFi not connected\n");
     return;
   }
 
@@ -62,10 +79,10 @@ void NMEA_read() {
     nmea_buffer[nmea_index] = static_cast<char>(tcp.read());
 
     // There should be no null chars
-    if (nmea_buffer[nmea_index] == 0) goto reset;
+    if (nmea_buffer[nmea_index] == 0) goto err;
 
     // Buffer is full and string not finished.
-    if (nmea_index == NMEA_BUFFER_LENGTH - 1) goto reset;
+    if (nmea_index == NMEA_BUFFER_LENGTH - 1) goto err;
 
     // When LF encountered, string is finished.
     if (nmea_buffer[nmea_index] == 0x0a) {
@@ -78,52 +95,46 @@ void NMEA_read() {
         nmea_buffer[nmea_index-1] = 0;
         parse_sentence(nmea_buffer);
       }
-      goto reset;
+      goto done;
     }
 
     // Move on and loop for next char
     nmea_index++;
     continue;
 
-  reset:
+  err:
+    LOG_DEBUG(" NMEA parse error\n");
+  done:
     nmea_index = 0;
-    LOG_DEBUG(" NMEA restart\n");
   }
 }
 
-bool get_ground_wind(double& GWS, double& GWD) {
-  uint32_t rtc_sec = getValidTime(RTCQuality::RTCQualityDevice);
-  if (rtc_sec < 1) {
-    return false;
-  }
+bool get_local_GPS(NyanVessel& v) {
+  // FIXME: validity period will be longer than specified. Should call this
+  // funcion when GPS supplies a fix.
 
-  uint32_t recent = rtc_sec - 10;
-  if (v.meshtastic_position_ts > recent &&
-      v.HDT_ts > recent &&
-      v.AWA_ts > recent &&
-      v.AWS_ts > recent) {
+  // Is it seconds or mS?
+  uint32_t validity_period = 10;
 
-    vec gw = wind::ground_wind(v.AWD(), v.AWS, v.meshtastic_COG, v.meshtastic_SOG);
-    GWS = gw.magnitude();
-    GWD = gw.angle();
+  if ((localPosition.timestamp > 0) &&
+      ((localPosition.timestamp + validity_period) > getValidTime(RTCQualityFromNet)) &&
+      (localPosition.fix_quality > 0)) {
+    v.COG.set(localPosition.ground_track * 100);
+    v.SOG.set(localPosition.ground_speed * MPS_TO_KNOTS);
+    LOG_DEBUG("Got fix from local GPS. SOG %f COG %f\n",
+              v.SOG.get(), v.COG.get());
     return true;
   }
   return false;
 }
 
-bool get_local_GPS() {
-  if (localPosition.fix_quality <= 0) {
-    return false;
-  }
-
-  v.meshtastic_COG = localPosition.ground_track * 100;
-  v.meshtastic_SOG = localPosition.ground_speed * MPS_TO_KNOTS;
-  v.meshtastic_position_ts = localPosition.timestamp;
-
-  LOG_DEBUG("Got fix from local GPS. SOG %f COG %f",
-            v.meshtastic_SOG, v.meshtastic_COG);
-
-  return true;
+void sample_NMEA_sensors(NyanVessel& v) {
+  v.HDT.sample();
+  v.AWA.sample();
+  v.AWS.sample();
+  LOG_DEBUG("Sensors after sampling: HDT: %f AWA (av): %f (%f) AWS (av) : %f %f\n",
+            v.HDT.get(), v.AWA.get(), v.AWA.average(),
+            v.AWS.get(), v.AWS.average());
 }
 
 /* Periodically send ship data over mesh. */
@@ -133,6 +144,9 @@ bool get_local_GPS() {
 */
 int32_t NyanModule::runOnce() {
   NMEA_read();
+  sample_NMEA_sensors(v);
+  get_local_GPS(v);
+
   send_report();
 
   LOG_INFO("No of tasks: %u\n", task_count());
@@ -145,40 +159,41 @@ void NyanModule::send_report() {
   nyan_telemetry telemetry;
   double GWS, GWD;
 
-  if (! get_local_GPS()) {
-    return;
+  if (Wind::derive_ground_wind(v, GWS, GWD)) {
+    telemetry.GWS_mean = (uint8_t) GWS;
+    //telemetry.GWS_gust = 20;
+    telemetry.GWD_mean = (uint16_t) GWD;
+    LOG_DEBUG("Sending GWS: %i GWD: %i\n", telemetry.GWS_mean, telemetry.GWD_mean);
   }
 
-  if (! get_ground_wind(GWS, GWD)) {
-    return;
-  }
+  // ... other sensors
 
-  telemetry.GWS_mean = (uint8_t) GWS;
-  //telemetry.GWS_gust = 20;
-  telemetry.GWD_mean = (uint16_t) GWD;
-  LOG_DEBUG("Got GWS: %i GWD: %i", telemetry.GWS_mean, telemetry.GWD_mean);
+  // TODO check protobuf optionalness for what sending when value not available
 
+  /*
   meshtastic_MeshPacket *p = allocDataProtobuf(telemetry);
 
   p->decoded.want_response = false; // is this needed or default?
   p->priority = meshtastic_MeshPacket_Priority_RELIABLE;
 
-  LOG_INFO("Sending Nyan telemetry");
+  LOG_INFO("Sending Nyan telemetry\n");
 
   service.sendToMesh(p);
+
+  */
 }
 
 bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
                                         nyan_telemetry *telemetry) {
   if (telemetry == NULL) {
-    LOG_WARN("handleReceivedProtobuf() got null protobuf decode");
+    LOG_WARN("handleReceivedProtobuf() got null protobuf decode\n");
     return false;
   }
 
   screen->print("Nyan RXed ");
 
   LOG_DEBUG("handleReceivedProtobuf() called. "
-            "Got GWS_mean: %u, GWS_gust: %u, GWD_mean: %u",
+            "Got GWS_mean: %u, GWS_gust: %u, GWD_mean: %u\n",
             telemetry->GWS_mean,
             telemetry->GWS_gust,
             telemetry->GWD_mean);

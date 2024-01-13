@@ -50,9 +50,3 @@ vec vec::operator-(const vec& v) {
   return sum;
 }
 
-vec wind::ground_wind(double AWD, double AWS, double COG, double SOG) {
-  vec apparent_wind {AWS, AWD};
-  vec course {SOG, COG};
-
-  return apparent_wind + course;
-}

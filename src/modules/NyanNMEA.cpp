@@ -12,45 +12,99 @@ extern NyanVessel v;
 
 void handle_MTW(const tNMEA0183Msg &msg) {
   if ((msg.FieldCount() == 2) && (msg.Field(1)[0] == 'C')) {
-    v.water_temp  = NMEA0183GetDouble(msg.Field(0));
-    LOG_INFO("Parsed MTW: %.2fC", v.water_temp);
+    double temp = NMEA0183GetDouble(msg.Field(0));
+    v.water_temp.set(temp);
+    LOG_INFO("Parsed MTW: %.2fC\n", temp);
   }
 }
 
 void handle_HDT(const tNMEA0183Msg &msg) {
   if ((msg.FieldCount() == 2) && (msg.Field(1)[0] == 'T')) {
     double heading = NMEA0183GetDouble(msg.Field(0));
-    v.HDT = heading;
-    v.HDT_ts = getValidTime(RTCQuality::RTCQualityDevice);
-    LOG_INFO("Parsed HDT: %f", v.HDT);
+    v.HDT.set(heading);
+    LOG_INFO("Parsed HDT: %f\n", heading);
   }
 }
 
 void handle_MWV(const tNMEA0183Msg &msg) {
-  // Reference is: NMEA0183Wind_Apparent or _True
-  // Speed in m/s
-  // Angle in radians?
-  double wind_angle;
-  tNMEA0183WindReference wind_reference;
-  double wind_speed;
-
-  if (NMEA0183ParseMWV_nc(msg, wind_angle, wind_reference, wind_speed)) {
-    if (wind_reference != NMEA0183Wind_Apparent) {
-      return;
-    }
-    v.AWA = wind_angle;
-    v.AWS = wind_speed;
-    v.AWA_ts = v.AWS_ts = getValidTime(RTCQuality::RTCQualityDevice);
-    LOG_INFO("Parsed MWV");
+  // I don't know if this message will always have the status field or if it
+  // might be missing in older versions. Will be more tolerant.
+  if ((msg.FieldCount() >= 5) && (msg.Field(4)[0] != 'A')) {
+    // Status flag present but not indicating data valid
+    LOG_DEBUG("MWV: Flagged invalid.\n");
+    return;
   }
+
+  if (msg.FieldCount() < 4) {
+    return;
+  }
+
+  /* Only accept relative wind angle, because True/Theoretical must have been
+     calculated, and I can't be sure how that was done. Better DIY by known
+     method if it is wanted. */
+  char reference = msg.Field(1)[0];
+  if (reference != 'R') {
+    LOG_DEBUG("MWV: skipping non 'R' reference.\n");
+    return;
+  }
+
+  double wind_speed = NMEA0183GetDouble(msg.Field(2));
+  char unit = msg.Field(3)[0];
+  if (unit == 'M') {
+    wind_speed *= MPS_TO_KNOTS;
+  } else if (unit == 'K') {
+    wind_speed *= KPH_TO_KNOTS;
+  } else if (unit == 'N') {
+    // in knots already
+  } else {
+    // Unknown / invalid unit
+    LOG_WARN("MWV: Unknown unit\n");
+    return;
+  }
+
+  v.AWS.set(wind_speed);
+
+  // Angle should be in degrees already
+  double wind_angle = NMEA0183GetDouble(msg.Field(0));
+  v.AWA.set(wind_angle);
+
+  LOG_INFO("MWV - AWS: %f AWA: %f\n", wind_speed, wind_angle);
 }
 
- struct tNMEA0183Handler {
+void handle_RMC(const tNMEA0183Msg &msg) {
+  double GPSTime;
+  char status;
+  double lat, lon;
+  double COG;
+  double SOG;
+  unsigned long int DaysSince1970;
+  double variation;
+  time_t datetime;
+
+  NMEA0183ParseRMC_nc(msg, GPSTime, status, lat, lon,
+                     COG, SOG, DaysSince1970, variation, &datetime);
+
+  //  bool NMEA0183ParseRMC_nc(const tNMEA0183Msg &NMEA0183Msg, double &GPSTime, char &Status, double &Latitude, double &Longitude,
+  //double &TrueCOG, double &SOG, unsigned long &DaysSince1970, double &Variation, time_t *DateTime) {
+
+
+  if (status != 'A') {
+    LOG_DEBUG("Low quality fix from NMEA RMC\n");
+    return;
+  }
+
+  LOG_DEBUG("Setting data from RMC: COG: %f SOG: %f\n", COG, SOG);
+  v.COG.set(COG);
+  v.SOG.set(SOG);
+}
+
+struct tNMEA0183Handler {
   const char *Code;
   void (*Handler)(const tNMEA0183Msg &NMEA0183Msg);
 };
 
 tNMEA0183Handler NMEA0183Handlers[]={
+  {"RMC",&handle_RMC},
   {"HDT",&handle_HDT},
   {"MTW",&handle_MTW},
   {"MWV",&handle_MWV},
@@ -97,11 +151,11 @@ byte hex_byte_to_int(char *hex) {
 bool parse_sentence(const char *buf) {
   tNMEA0183Msg msg = tNMEA0183Msg();
   if (msg.SetMessage(buf)) {
-    LOG_DEBUG("Handling NMEA %s", msg.MessageCode());
+    LOG_DEBUG("Handling NMEA %s\n", msg.MessageCode());
     HandleNMEA0183Msg(msg);
     return true;
   } else {
-    LOG_DEBUG("NMEA bad checksum");
+    LOG_DEBUG("NMEA bad checksum\n");
     return false;
   }
 }

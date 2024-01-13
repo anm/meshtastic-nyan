@@ -1,9 +1,11 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
-constexpr uint16_t METERS_PER_NM = 1852;
-constexpr double MPS_TO_KNOTS = (60 * 60) / METERS_PER_NM;
+// For millis()
+#include <Arduino.h>
+#include "constants.h"
 
 /*
   Want Ground wind speed and direction.
@@ -16,34 +18,84 @@ constexpr double MPS_TO_KNOTS = (60 * 60) / METERS_PER_NM;
   for report location, so might as well work from apparent to start with.
 */
 
-struct NyanVessel {
-  double HDT;
-  uint32_t HDT_ts;
-  double AWS;
-  uint32_t AWS_ts;
-  double AWA;
-  uint32_t AWA_ts;
+template<typename T>
+class Sensor {
+ public:
+ Sensor(uint32_t _valid_period = 5000) : valid_period{_valid_period} {};
 
-  double COG;
-  double SOG;
+  bool valid() {
+    return millis() < (timestamp + valid_period);
+  }
 
-  double water_temp;
-  uint32_t water_temp_ts;
+  void set(T value) {
+    timestamp = millis();
+    val = value;
+  }
 
-  double meshtastic_COG;
-  double meshtastic_SOG;
-  uint32_t meshtastic_position_ts;
+  bool get(T& value) {
+    value = val;
+    return valid();
+  }
 
-  double AWD();
+  T get() {
+    return val;
+  }
+
+ protected:
+  T val;
+  uint32_t timestamp;
+  uint32_t valid_period;
 };
 
-/*
-  Need running average and max over last reporting period - 10 mins seems to be a standard.
+template<typename T, size_t length>
+class SensorAveraging : public Sensor<T> {
+public:
+ SensorAveraging(uint32_t _valid_period = 5000) : Sensor<T>{_valid_period} {};
 
-  First do a three second running average, then take the max and mean of
-  that. This was the storage is bounded. Don't need more detail than three
-  seconds.
-*/
+  void sample() {
+    T d = Sensor<T>::val / length;
 
-/* Weather station reporting period in seconds. */
-constexpr uint16_t met_reporting_period = 600;
+    if (!Sensor<T>::valid()) {
+      reset();
+      return;
+    }
+
+    if (started) {
+      for (size_t i = 0; i < length; i++) {
+        data[i] = d;
+      }
+      started = false;
+    } else {
+      tail = (tail + 1) % length;
+      data[tail] = d;
+    }
+  }
+
+  T average() {
+    T out = data[0];
+    for (size_t i = 1; i < length; i++) {
+      out += data[i];
+    }
+    return out;
+  }
+
+ protected:
+  T data[length];
+  size_t tail = 0;
+  bool started = true;
+
+  void reset() {
+    started = false;
+  }
+};
+
+struct NyanVessel {
+  SensorAveraging<double, 10> HDT;
+  SensorAveraging<double, 10> AWS;
+  SensorAveraging<double, 10> AWA;
+
+  Sensor<double> COG;
+  Sensor<double> SOG;
+
+  Sensor<double> water_temp;
+};
