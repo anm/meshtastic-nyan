@@ -13,7 +13,7 @@ extern NyanVessel v;
 void handle_MTW(const tNMEA0183Msg &msg) {
   if ((msg.FieldCount() == 2) && (msg.Field(1)[0] == 'C')) {
     double temp = NMEA0183GetDouble(msg.Field(0));
-    v.water_temp.set(temp);
+    v.water_temperature.set(temp);
     LOG_INFO("Parsed MTW: %.2fC\n", temp);
   }
 }

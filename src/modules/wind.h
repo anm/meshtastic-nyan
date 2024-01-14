@@ -10,6 +10,21 @@
 
 using namespace std;
 
+
+/*
+  Want Ground wind speed and direction.
+  Best derive from apparent wind, compass, and GNSS SOG/COG.
+
+  AWA + true heading -> AWD
+
+  Water referenced true wind messages are ambigious and probably wrong,
+  because it can't really be done without a leeway sensor. We need GPS anyway
+  for report location, so might as well work from apparent to start with.
+*/
+
+
+
+
 /* Vectors. Angles in radians. */
 class vec {
  public:
@@ -42,8 +57,8 @@ public:
       return false;
     }
 
-    LOG_DEBUG("Wind using averages: AWS: %f AWA: %f HDT: %f\n", v.AWS.average(), v.AWA.average(), v.HDT.average());
-    vec apparent_wind {v.AWS.average(), derive_AWD(v.AWA.average() * deg_to_rad, v.HDT.average()) * deg_to_rad};
+    LOG_DEBUG("Wind using averages: AWS: %f AWA: %f HDT: %f\n", v.AWS.get(), v.AWA.get(), v.HDT.get());
+    vec apparent_wind {v.AWS.get(), derive_AWD(v.AWA.get() * deg_to_rad, v.HDT.get()) * deg_to_rad};
     vec course {v.SOG.get(), v.COG.get() * deg_to_rad};
     vec gw = apparent_wind + course;
 

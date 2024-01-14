@@ -13,7 +13,13 @@
 typedef struct _nyan_telemetry {
     uint32_t GWS_mean;
     uint32_t GWS_gust;
-    uint32_t GWD_mean;
+    uint32_t GWD_mean; /* uint32 GWD_stddev = 6; */
+    float barometric_pressure;
+    float barometric_pressure_trend; /* what if moving? */
+    float air_temperature;
+    uint32_t air_humidity_relative;
+    float water_temperature;
+    float water_depth;
 } nyan_telemetry;
 
 
@@ -22,19 +28,31 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define nyan_telemetry_init_default              {0, 0, 0}
-#define nyan_telemetry_init_zero                 {0, 0, 0}
+#define nyan_telemetry_init_default              {0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define nyan_telemetry_init_zero                 {0, 0, 0, 0, 0, 0, 0, 0, 0}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define nyan_telemetry_GWS_mean_tag              1
 #define nyan_telemetry_GWS_gust_tag              2
 #define nyan_telemetry_GWD_mean_tag              5
+#define nyan_telemetry_barometric_pressure_tag   10
+#define nyan_telemetry_barometric_pressure_trend_tag 11
+#define nyan_telemetry_air_temperature_tag       15
+#define nyan_telemetry_air_humidity_relative_tag 16
+#define nyan_telemetry_water_temperature_tag     17
+#define nyan_telemetry_water_depth_tag           18
 
 /* Struct field encoding specification for nanopb */
 #define nyan_telemetry_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UINT32,   GWS_mean,          1) \
 X(a, STATIC,   SINGULAR, UINT32,   GWS_gust,          2) \
-X(a, STATIC,   SINGULAR, UINT32,   GWD_mean,          5)
+X(a, STATIC,   SINGULAR, UINT32,   GWD_mean,          5) \
+X(a, STATIC,   SINGULAR, FLOAT,    barometric_pressure,  10) \
+X(a, STATIC,   SINGULAR, FLOAT,    barometric_pressure_trend,  11) \
+X(a, STATIC,   SINGULAR, FLOAT,    air_temperature,  15) \
+X(a, STATIC,   SINGULAR, UINT32,   air_humidity_relative,  16) \
+X(a, STATIC,   SINGULAR, FLOAT,    water_temperature,  17) \
+X(a, STATIC,   SINGULAR, FLOAT,    water_depth,      18)
 #define nyan_telemetry_CALLBACK NULL
 #define nyan_telemetry_DEFAULT NULL
 
@@ -44,7 +62,7 @@ extern const pb_msgdesc_t nyan_telemetry_msg;
 #define nyan_telemetry_fields &nyan_telemetry_msg
 
 /* Maximum encoded size of messages (where known) */
-#define nyan_telemetry_size                      18
+#define nyan_telemetry_size                      52
 
 #ifdef __cplusplus
 } /* extern "C" */
