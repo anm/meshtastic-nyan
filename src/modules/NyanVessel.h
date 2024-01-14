@@ -138,6 +138,7 @@ struct NyanVessel {
   Sensor<double> SOG;
 
   Sensor<double> water_temperature;
+  Sensor<double> water_depth;
 };
 
 /*

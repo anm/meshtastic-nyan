@@ -71,6 +71,32 @@ void handle_MWV(const tNMEA0183Msg &msg) {
   LOG_INFO("MWV - AWS: %f AWA: %f\n", wind_speed, wind_angle);
 }
 
+// Always in meters
+//
+// The data from ww's YD box gives a DBS message when offset is negative, of
+// what is actually DBK. I suspect just using DPT will be most trustworthy.
+// YD also says that DBK / DBS / DBT are obsolete.
+//
+// My boat gave DPT with correct positive offset.
+void handle_DPT(const tNMEA0183Msg &msg) {
+  double dbt, offset, range, dbs;
+  NMEA0183ParseDPT_nc(msg, dbt, offset, range);
+  if ((dbt == NMEA0183DoubleNA) || (offset == NMEA0183DoubleNA)) {
+    LOG_WARN("Failed to parse double from DPT message.\n");
+    return;
+  }
+
+  if (offset >= 0) {
+    dbs = dbt + offset;
+  } else {
+    // Don't care about depth below keel. Need depth below surface.
+    // dbk = dbt + offset
+    return;
+  }
+  v.water_depth.set(dbs);
+  LOG_INFO("Set water depth to %f from DPT message\n", dbs);
+}
+
 void handle_RMC(const tNMEA0183Msg &msg) {
   double GPSTime;
   char status;

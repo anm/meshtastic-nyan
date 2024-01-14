@@ -186,6 +186,12 @@ void NyanModule::send_report() {
     LOG_DEBUG("Water temperature %f°C", telemetry.water_temperature);
   }
 
+  if (v.water_depth.valid()) {
+    send = true;
+    telemetry.water_depth = v.water_depth.get();
+    LOG_DEBUG("Sending water depth %fm", telemetry.water_depth);
+  }
+
   if (send) {
     LOG_INFO("Sending Nyan telemetry\n");
 
