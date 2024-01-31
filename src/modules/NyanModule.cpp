@@ -143,6 +143,60 @@ void sample_NMEA_sensors(NyanVessel& v) {
   }
 }
 
+void json_test() {
+  /*
+   * Connect to SignalK by tcp and send delta message.
+   *
+   * Qs: will OpenCPN accept these directly?
+   * UDP?
+  */
+
+  int node_id = 2;
+  int timestamp = 3;
+
+  static WiFiClient tcp;
+
+  const uint8_t NMEA_BUFFER_LENGTH = 85;
+  // Including terminating charaters (CR LF)
+  const uint8_t NMEA_MIN_SENTENCE_LENGTH = 11;
+
+  static char nmea_buffer[NMEA_BUFFER_LENGTH];
+  static uint8_t nmea_index = 0;
+
+  const char * host = "mews.river.cat";
+  const uint16_t port = 8375;
+
+  if (!WiFi.isConnected()) {
+    LOG_INFO("WiFi not connected\n");
+    return;
+  }
+
+  if (! tcp.connected()) {
+    if (tcp.connect(host, port)) {
+      LOG_INFO("SignalK TCP connected\n");
+    } else {
+      LOG_WARN("Connecting SignalK TCP failed.\n");
+      return;
+    }
+  }
+
+  String s =
+    R"({"context": "vessels.urn:mrn:nyan:)" + String(node_id) + R"(",)"
+    R"("updates": [{"source": {"label": "nyan", "type": "nyan"},)"
+    R"("timestamp": ")" + String(timestamp) + R"(",)" // e.g. 2015-01-07T07:18:44Z
+    R"("values": [)"
+
+    R"({"path": "environment.wind.speedOverGround", "value": 42})"
+    ","
+    R"({"path": "environment.water.temperature", "value": 42})"
+
+    "]}]}\r\n";
+
+  tcp.print(s);
+
+  LOG_INFO(s.c_str());
+}
+
 /* Periodically send ship data over mesh. */
 
 /* Can run every time the thread is scheduled.
@@ -152,6 +206,8 @@ int32_t NyanModule::runOnce() {
   NMEA_read();
   sample_NMEA_sensors(v);
   get_local_GPS(v);
+
+  json_test();
 
   send_report();
 
@@ -183,13 +239,13 @@ void NyanModule::send_report() {
   if (v.water_temperature.valid()) {
     send = true;
     telemetry.water_temperature = v.water_temperature.get();
-    LOG_DEBUG("Water temperature %f°C", telemetry.water_temperature);
+    LOG_DEBUG("Water temperature %f°C\n", telemetry.water_temperature);
   }
 
   if (v.water_depth.valid()) {
     send = true;
     telemetry.water_depth = v.water_depth.get();
-    LOG_DEBUG("Sending water depth %fm", telemetry.water_depth);
+    LOG_DEBUG("Sending water depth %fm\n", telemetry.water_depth);
   }
 
   if (send) {
