@@ -156,13 +156,6 @@ void json_test() {
 
   static WiFiClient tcp;
 
-  const uint8_t NMEA_BUFFER_LENGTH = 85;
-  // Including terminating charaters (CR LF)
-  const uint8_t NMEA_MIN_SENTENCE_LENGTH = 11;
-
-  static char nmea_buffer[NMEA_BUFFER_LENGTH];
-  static uint8_t nmea_index = 0;
-
   const char * host = "mews.river.cat";
   const uint16_t port = 8375;
 
@@ -195,25 +188,6 @@ void json_test() {
   tcp.print(s);
 
   LOG_INFO(s.c_str());
-}
-
-/* Periodically send ship data over mesh. */
-
-/* Can run every time the thread is scheduled.
-   Delayed to meet desired period, which is the return value.
-*/
-int32_t NyanModule::runOnce() {
-  NMEA_read();
-  sample_NMEA_sensors(v);
-  get_local_GPS(v);
-
-  json_test();
-
-  send_report();
-
-  LOG_INFO("No of tasks: %u\n", task_count());
-
-  return 3000; // period in milliseconds
 }
 
 void NyanModule::send_report() {
@@ -276,4 +250,47 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
             telemetry->GWD_mean);
 
   return true;
+}
+
+/* Periodically send ship data over mesh. */
+
+/* Can run every time the thread is scheduled.
+   Delayed to meet desired period, which is the return value.
+*/
+int32_t NyanModule::runOnce() {
+  NMEA_read();
+  get_local_GPS(v);
+
+  json_test();
+
+  LOG_INFO("No of tasks: %u\n", task_count());
+
+  return 3000; // period in milliseconds
+}
+
+/* A FreeRTOS task to read / filter / store sensor data. */
+void NyanModule::sensor_sampler_task(void *params) {
+  while(true) {
+    sample_NMEA_sensors(v);
+    delay(10000);
+  }
+}
+
+/* A FreeRTOS task to periodically compile metob reports */
+void NyanModule::report_compilation_task(void *params) {
+  while(true) {
+    send_report();
+    delay(10000);
+  }
+}
+
+NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan_telemetry_msg),
+                           concurrency::OSThread("NyanModule") {
+  TaskHandle_t *sensor_task_handle;
+  xTaskCreate(NyanModule::sensor_sampler_task,
+              "NYAN sensor sampler",
+              100, // Stack size, in bytes, not words, contrary to rtos docs, because espressif...
+              NULL, // task paramaters
+              5, // priority
+              sensor_task_handle);
 }
