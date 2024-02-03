@@ -263,7 +263,7 @@ int32_t NyanModule::runOnce() {
 
   json_test();
 
-  LOG_INFO("No of tasks: %u\n", task_count());
+  LOG_INFO("No of meshtastic tasks: %u\n", task_count());
 
   return 3000; // period in milliseconds
 }
@@ -271,26 +271,78 @@ int32_t NyanModule::runOnce() {
 /* A FreeRTOS task to read / filter / store sensor data. */
 void NyanModule::sensor_sampler_task(void *params) {
   while(true) {
+    LOG_DEBUG("NYAN Sampling sensors\n");
+    LOG_DEBUG("NYAN sampler stack high water mark: %u\n",
+              uxTaskGetStackHighWaterMark(NULL));
     sample_NMEA_sensors(v);
-    delay(10000);
+    delay(5000);
   }
 }
 
 /* A FreeRTOS task to periodically compile metob reports */
-void NyanModule::report_compilation_task(void *params) {
+void NyanModule::report_sender_task(void *params) {
+  NyanModule *nm = (NyanModule *) params;
+  LOG_DEBUG("NYAN reporter stack high water mark: %u\n",
+            uxTaskGetStackHighWaterMark(NULL));
+
   while(true) {
-    send_report();
+    LOG_DEBUG("NYAN sending report\n");
+    nm->send_report();
     delay(10000);
   }
 }
 
+void debug_memory(void) {
+  LOG_DEBUG("ESP.getHeapSize(): %u\n", ESP.getHeapSize());
+  LOG_DEBUG("ESP.getFreeHeap(): %u\n", ESP.getFreeHeap());
+
+  LOG_DEBUG("Free heap: %u\n", esp_get_free_heap_size());
+  LOG_DEBUG("Lowest free heap seen: %u\n", esp_get_minimum_free_heap_size());
+}
+
 NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan_telemetry_msg),
                            concurrency::OSThread("NyanModule") {
-  TaskHandle_t *sensor_task_handle;
-  xTaskCreate(NyanModule::sensor_sampler_task,
-              "NYAN sensor sampler",
-              100, // Stack size, in bytes, not words, contrary to rtos docs, because espressif...
-              NULL, // task paramaters
-              5, // priority
-              sensor_task_handle);
+
+
+  LOG_DEBUG("WiFi enabled: %u\n", config.network.wifi_enabled);
+
+  TaskHandle_t sensor_task_handle;
+  TaskHandle_t reporter_task_handle;
+
+  debug_memory();
+  auto create_return_val =
+    xTaskCreate(NyanModule::sensor_sampler_task,
+                "NYAN sensor sampler",
+                // Stack size, in bytes, not words,
+                // contrary to rtos docs, because espressif...
+                10000,
+                NULL, // task paramaters
+                5, // priority
+                &sensor_task_handle);
+  if( create_return_val == pdPASS ) {
+    LOG_DEBUG("NYAN sensor sampler task created\n");
+  } else {
+    LOG_ERROR("NYAN sensor sampler task create FAILED\n");
+    // Probably not enough memory
+  }
+  LOG_DEBUG("After create task\n");
+  debug_memory();
+
+  create_return_val =
+    xTaskCreate(NyanModule::report_sender_task,
+                "NYAN report sender",
+                // Stack size, in bytes, not words,
+                // contrary to rtos docs, because espressif...
+                10000,
+                this, // task paramaters
+                5, // priority
+                &reporter_task_handle);
+  if( create_return_val == pdPASS ) {
+    LOG_DEBUG("NYAN reporter task created\n");
+  } else {
+    LOG_ERROR("NYAN reporter task create FAILED\n");
+    // Probably not enough memory
+  }
+  LOG_DEBUG("After create task\n");
+  debug_memory();
 }
