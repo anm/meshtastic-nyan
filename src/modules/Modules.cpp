@@ -45,6 +45,9 @@
 #if !MESHTASTIC_EXCLUDE_WAYPOINT
 #include "modules/WaypointModule.h"
 #endif
+
+#include "modules/NyanModule.h"
+
 #if ARCH_PORTDUINO
 #include "input/LinuxInputImpl.h"
 #if !MESHTASTIC_EXCLUDE_STOREFORWARD
@@ -141,6 +144,9 @@ void setupModules()
 #endif
         // Example: Put your module here
         // new ReplyModule();
+
+        new NyanModule();
+
 #if (HAS_BUTTON || ARCH_PORTDUINO) && !MESHTASTIC_EXCLUDE_INPUTBROKER
         rotaryEncoderInterruptImpl1 = new RotaryEncoderInterruptImpl1();
         if (!rotaryEncoderInterruptImpl1->init()) {
