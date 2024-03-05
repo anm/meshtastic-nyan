@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+
+# Reset a devboard by briefly pulling the reset line low
+# GPIO21 is pin 40 on the Pi header
+
+from gpiozero import LED
+from time import sleep
+
+led = LED(21)
+
+led.off()
+sleep(0.3)
+led.on()
