@@ -47,15 +47,18 @@ public:
 
 
   static bool derive_ground_wind(NyanVessel& v, double& GWS, double& GWD) {
+    Position pos;
+    bool havePosition = v.getPosition(&pos);
+
     if (!(v.AWS.valid() && v.AWA.valid() && v.HDT.valid() &&
-          v.SOG.valid() && v.COG.valid())) {
+          havePosition)) {
       LOG_DEBUG("Can't derive_ground_wind: invalid data.\n");
       return false;
     }
 
     LOG_DEBUG("Wind using averages: AWS: %f AWA: %f HDT: %f\n", v.AWS.get(), v.AWA.get(), v.HDT.get());
     vec apparent_wind {v.AWS.get(), derive_AWD(v.AWA.get() * deg_to_rad, v.HDT.get()) * deg_to_rad};
-    vec course {v.SOG.get(), v.COG.get() * deg_to_rad};
+    vec course {pos.SOG, pos.COG * deg_to_rad};
     vec gw = apparent_wind + course;
 
     GWS = gw.magnitude();

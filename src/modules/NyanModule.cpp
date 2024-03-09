@@ -167,6 +167,10 @@ void signalk_test(NyanVessel v) {
   const char * host = "nyan-host-0.river.cat";
   const uint16_t port = 8375;
 
+  // SignalK security token
+  // Generate with: signalk-generate-token -u nyan -e 10y -s /home/signalk/.signalk/security.json
+  String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Im55YW4iLCJpYXQiOjE3MTAwMDQ2NDMsImV4cCI6MjAyNTU4MDY0M30.HjqsMoUgywAL9oHmEnF3ZmhPqY7fOdgPgsOjeten8CI";
+
   if (!WiFi.isConnected()) {
     LOG_INFO("WiFi not connected\n");
     return;
@@ -183,21 +187,41 @@ void signalk_test(NyanVessel v) {
 
   String s =
     R"({"context": "vessels.urn:mrn:nyan:)" + String(node_id) + R"(",)"
+    R"("token": ")" + token + R"(",)"
     R"("updates": [{"source": {"label": "nyan", "type": "nyan"},)"
     R"("timestamp": ")" + String(timestamp) + R"(",)" // e.g. 2015-01-07T07:18:44Z
-    R"("values": [)"
+    R"("values": [)";
 
-    R"({"path": "environment.wind.speedOverGround", "value": )" + String(v.SOG.get()) + "}"
-    ","
-    R"({"path": "environment.water.temperature", "value": 42})"
-    ","
-    R"({"path": "environment.water.temperature", "value": 42})"
+  // Path reference: http://signalk.org/specification/1.3.0/doc/signalk.pdf
 
+  Position pos;
+  bool havePosition;
+  havePosition = v.getPosition(&pos);
+  if (havePosition) {
+    s +=
+      R"({"path": "environment.wind.speedOverGround", "value": )" + String(pos.SOG) + "}"
+      ",";
+  }
+
+  if (v.water_temperature.valid()) {
+    s +=
+      R"({"path": "environment.water.temperature", "units": "C", "value": )" + String(v.water_temperature.get()) + "}"
+        ",";
+  }
+
+  if (v.water_depth.valid()) {
+    s +=
+      R"({"path": "environment.depth.belowSurface", "value": )" + String(v.water_depth.get()) + "}"
+      ",";
+  }
+
+  s +=
+    R"({"path": "nyan.uptime", "value": )" + String(millis()) + "}"
+    // Must have no comma on list item
     "]}]}\r\n";
 
-  tcp.print(s);
-
   LOG_INFO(s.c_str());
+  tcp.print(s);
 }
 
 void NyanModule::send_report() {
