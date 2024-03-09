@@ -55,7 +55,7 @@
 #endif
 #endif
 #if HAS_TELEMETRY
-#include "modules/Telemetry/DeviceTelemetry.h"
+//#include "modules/Telemetry/DeviceTelemetry.h"
 #endif
 #if HAS_SENSOR && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
 #include "main.h"
@@ -211,6 +211,7 @@ void setupModules()
 #if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_POWER_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
         new PowerTelemetryModule();
 #endif
+        */
 #if (defined(ARCH_ESP32) || defined(ARCH_NRF52) || defined(ARCH_RP2040)) && !defined(CONFIG_IDF_TARGET_ESP32S2) &&               \
     !defined(CONFIG_IDF_TARGET_ESP32C3)
 #if !MESHTASTIC_EXCLUDE_SERIAL

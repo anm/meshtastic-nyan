@@ -3,6 +3,8 @@
 # Reset a devboard by briefly pulling the reset line low
 # GPIO21 is pin 40 on the Pi header
 
+# Requires user to be in gpio group (or run as root)
+
 from gpiozero import LED
 from time import sleep
 

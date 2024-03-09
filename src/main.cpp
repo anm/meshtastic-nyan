@@ -612,7 +612,7 @@ void setup()
 #endif
 
 #ifdef HAS_SDCARD
-    setupSDCard();
+    //    setupSDCard();
 #endif
 
     // LED init

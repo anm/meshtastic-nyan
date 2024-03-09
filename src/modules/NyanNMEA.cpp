@@ -11,7 +11,7 @@ extern NyanVessel v;
 #include "configuration.h"
 
 void handle_MTW(const tNMEA0183Msg &msg) {
-  if ((msg.FieldCount() == 2) && (msg.Field(1)[0] == 'C')) {
+  if ((msg.FieldCount() >= 2) && (msg.Field(1)[0] == 'C')) {
     double temp = NMEA0183GetDouble(msg.Field(0));
     v.water_temperature.set(temp);
     LOG_INFO("Parsed MTW: %.2fC\n", temp);
@@ -19,7 +19,7 @@ void handle_MTW(const tNMEA0183Msg &msg) {
 }
 
 void handle_HDT(const tNMEA0183Msg &msg) {
-  if ((msg.FieldCount() == 2) && (msg.Field(1)[0] == 'T')) {
+  if ((msg.FieldCount() >= 2) && (msg.Field(1)[0] == 'T')) {
     double heading = NMEA0183GetDouble(msg.Field(0));
     v.HDT.set(heading);
     LOG_INFO("Parsed HDT: %f\n", heading);
@@ -91,37 +91,43 @@ void handle_DPT(const tNMEA0183Msg &msg) {
   } else {
     // Don't care about depth below keel. Need depth below surface.
     // dbk = dbt + offset
+    LOG_DEBUG("Ignoring DPT message with negative offset (depth below keel).");
     return;
   }
   v.water_depth.set(dbs);
-  LOG_INFO("Set water depth to %f from DPT message\n", dbs);
+  LOG_DEBUG("Set water depth to %f from DPT message\n", dbs);
 }
 
 void handle_RMC(const tNMEA0183Msg &msg) {
   double GPSTime;
   char status;
-  double lat, lon;
+  Position pos;
   double COG;
   double SOG;
   unsigned long int DaysSince1970;
   double variation;
   time_t datetime;
+  char FAAModeIndicator;
+  char NavStatus;
 
-  NMEA0183ParseRMC_nc(msg, GPSTime, status, lat, lon,
-                     COG, SOG, DaysSince1970, variation, &datetime);
-
-  //  bool NMEA0183ParseRMC_nc(const tNMEA0183Msg &NMEA0183Msg, double &GPSTime, char &Status, double &Latitude, double &Longitude,
-  //double &TrueCOG, double &SOG, unsigned long &DaysSince1970, double &Variation, time_t *DateTime) {
+  NMEA0183ParseRMC_nc(msg, GPSTime, status, pos.latitude, pos.longitude,
+                      COG, SOG, DaysSince1970, variation,
+                      FAAModeIndicator, NavStatus, &datetime);
 
 
-  if (status != 'A') {
-    LOG_DEBUG("Low quality fix from NMEA RMC\n");
+  if ((status != 'A') || (NavStatus == 'V')) {
+    LOG_DEBUG("Invalid position from NMEA RMC\n");
     return;
   }
 
+  v.position_nmea.set_valid();
+
   LOG_DEBUG("Setting data from RMC: COG: %f SOG: %f\n", COG, SOG);
-  v.COG.set(COG);
-  v.SOG.set(SOG);
+
+  v.position_nmea.COG = COG;
+  v.position_nmea.SOG = SOG;
+  v.position_nmea.latitude = pos.latitude;
+  v.position_nmea.longitude = pos.longitude;
 }
 
 struct tNMEA0183Handler {
@@ -130,6 +136,7 @@ struct tNMEA0183Handler {
 };
 
 tNMEA0183Handler NMEA0183Handlers[]={
+  {"DPT",&handle_DPT},
   {"RMC",&handle_RMC},
   {"HDT",&handle_HDT},
   {"MTW",&handle_MTW},
@@ -177,11 +184,11 @@ byte hex_byte_to_int(char *hex) {
 bool parse_sentence(const char *buf) {
   tNMEA0183Msg msg = tNMEA0183Msg();
   if (msg.SetMessage(buf)) {
-    LOG_DEBUG("Handling NMEA %s\n", msg.MessageCode());
+    //LOG_DEBUG("Handling NMEA %s\n", msg.MessageCode());
     HandleNMEA0183Msg(msg);
     return true;
   } else {
-    LOG_DEBUG("NMEA bad checksum\n");
+    LOG_WARN("NMEA bad checksum\n");
     return false;
   }
 }

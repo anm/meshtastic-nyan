@@ -9,6 +9,7 @@
 
 #include "NyanModule.h"
 #include "NyanNMEA.h"
+#include "NyanN2K.h"
 #include "NyanVessel.h"
 #include "wind.h"
 
@@ -17,25 +18,21 @@
 
 #include "os_status.h"
 
-// Vessel data acquired from local NMEA network
-//NyanVessel v_nmea;
-
-// Data from Nyan device sensors
-//NyanVessel v_local;
-
 NyanVessel v;
 
 /*
-  Need running average and max over last reporting period - 10 mins seems to be a standard.
+  Wind Reports
+
+  Need running average and max over last reporting period - 10 mins seems to
+  be a standard.
 
   First do a three second running average, then take the max and mean of
   that. This was the storage is bounded. Don't need more detail than three
   seconds.
 */
 
-/* Weather station reporting period in seconds. */
-constexpr uint16_t met_reporting_period = 600;
-
+/* Weather station reporting period in milliseconds. */
+constexpr uint32_t met_reporting_period = 600000;
 
 /* Import NMEA0183 data from a tcp server.
    If not connected, connect.
@@ -113,16 +110,27 @@ bool get_local_GPS(NyanVessel& v) {
   // FIXME: validity period will be longer than specified. Should call this
   // funcion when GPS supplies a fix.
 
-  // Is it seconds or mS?
+  // Seconds
   uint32_t validity_period = 10;
+
+  // FIXME: Timeformats
+  // Fix timestamp is "in integer epoch seconds" (from GPS)
+  // getValidTime gives what?
 
   if ((localPosition.timestamp > 0) &&
       ((localPosition.timestamp + validity_period) > getValidTime(RTCQualityFromNet)) &&
       (localPosition.fix_quality > 0)) {
-    v.COG.set(localPosition.ground_track * 100);
-    v.SOG.set(localPosition.ground_speed * MPS_TO_KNOTS);
-    LOG_DEBUG("Got fix from local GPS. SOG %f COG %f\n",
-              v.SOG.get(), v.COG.get());
+
+    v.position_gnss_builtin.set_valid();
+
+    v.position_gnss_builtin.COG = localPosition.ground_track * 100;
+    v.position_gnss_builtin.SOG = localPosition.ground_speed * MPS_TO_KNOTS;
+
+    v.position_gnss_builtin.latitude  = localPosition.latitude_i  * 1e-7;
+    v.position_gnss_builtin.longitude = localPosition.longitude_i * 1e-7;
+
+    LOG_DEBUG("Got fix from builtin GNSS. SOG %f COG %f\n",
+              v.position_gnss_builtin.SOG, v.position_gnss_builtin.COG);
     return true;
   }
   return false;
@@ -143,7 +151,7 @@ void sample_NMEA_sensors(NyanVessel& v) {
   }
 }
 
-void json_test() {
+void signalk_test(NyanVessel v) {
   /*
    * Connect to SignalK by tcp and send delta message.
    *
@@ -156,7 +164,7 @@ void json_test() {
 
   static WiFiClient tcp;
 
-  const char * host = "mews.river.cat";
+  const char * host = "nyan-host-0.river.cat";
   const uint16_t port = 8375;
 
   if (!WiFi.isConnected()) {
@@ -179,7 +187,9 @@ void json_test() {
     R"("timestamp": ")" + String(timestamp) + R"(",)" // e.g. 2015-01-07T07:18:44Z
     R"("values": [)"
 
-    R"({"path": "environment.wind.speedOverGround", "value": 42})"
+    R"({"path": "environment.wind.speedOverGround", "value": )" + String(v.SOG.get()) + "}"
+    ","
+    R"({"path": "environment.water.temperature", "value": 42})"
     ","
     R"({"path": "environment.water.temperature", "value": 42})"
 
@@ -259,9 +269,11 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
 */
 int32_t NyanModule::runOnce() {
   NMEA_read();
+  nyan_N2K_loop();
+
   get_local_GPS(v);
 
-  json_test();
+  signalk_test(v);
 
   LOG_INFO("No of meshtastic tasks: %u\n", task_count());
 
@@ -286,9 +298,9 @@ void NyanModule::report_sender_task(void *params) {
             uxTaskGetStackHighWaterMark(NULL));
 
   while(true) {
+    delay(met_reporting_period);
     LOG_DEBUG("NYAN sending report\n");
     nm->send_report();
-    delay(10000);
   }
 }
 
@@ -303,8 +315,8 @@ void debug_memory(void) {
 NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan_telemetry_msg),
                            concurrency::OSThread("NyanModule") {
 
-
-  LOG_DEBUG("WiFi enabled: %u\n", config.network.wifi_enabled);
+  LOG_INFO("Starting Nyan Module");
+  LOG_DEBUG("WiFi enabled?: %u\n", config.network.wifi_enabled);
 
   TaskHandle_t sensor_task_handle;
   TaskHandle_t reporter_task_handle;
@@ -337,7 +349,7 @@ NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan
                 this, // task paramaters
                 5, // priority
                 &reporter_task_handle);
-  if( create_return_val == pdPASS ) {
+  if (create_return_val == pdPASS) {
     LOG_DEBUG("NYAN reporter task created\n");
   } else {
     LOG_ERROR("NYAN reporter task create FAILED\n");
@@ -345,4 +357,6 @@ NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan
   }
   LOG_DEBUG("After create task\n");
   debug_memory();
+
+  nyan_N2K_setup();
 }

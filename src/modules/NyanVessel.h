@@ -57,23 +57,24 @@ protected:
   T _max;
 };
 
-  template<typename T>
-  Sensor<T>::Sensor(uint32_t _valid_period) : valid_period{_valid_period} {};
-
-  template<typename T>
-  bool Sensor<T>::valid() {
-    return millis() < (timestamp + valid_period);
-  }
 template<typename T>
-  void Sensor<T>::set(T value) {
-    timestamp = millis();
-    val = value;
-  }
+Sensor<T>::Sensor(uint32_t _valid_period) : valid_period{_valid_period} {};
 
-  template<typename T>
-  T Sensor<T>::get() {
-    return val;
-  }
+template<typename T>
+bool Sensor<T>::valid() {
+  return millis() < (timestamp + valid_period);
+}
+
+template<typename T>
+void Sensor<T>::set(T value) {
+  timestamp = millis();
+  val = value;
+}
+
+template<typename T>
+T Sensor<T>::get() {
+  return val;
+}
 
 template<typename T, size_t length>
 class SensorAveraging : public Sensor<T> {
@@ -100,7 +101,7 @@ public:
   }
 
   /* Return the average value. */
-  /* "overrides" Sensor get(), but not using virtual functions now. */
+  /* "overrides" Sensor get(), but not using virtual functions. */
   T get() {
     T out = data[0];
     for (size_t i = 1; i < length; i++) {
@@ -124,23 +125,6 @@ public:
   }
 };
 
-
-struct NyanVessel {
-  SensorAveraging<double, 10> HDT;
-  SensorAveraging<double, 10> AWS;
-  SensorAveraging<double, 10> AWA;
-
-  // Derived values
-  Sensor<double> GWS;
-  Sensor<double> GWD;
-
-  Sensor<double> COG;
-  Sensor<double> SOG;
-
-  Sensor<double> water_temperature;
-  Sensor<double> water_depth;
-};
-
 /*
  * Collect statistics on Sensor values.
  *
@@ -150,25 +134,25 @@ struct NyanVessel {
 template<typename T>
 Statistics<T>::Statistics(Sensor<T> *_sensor) : sensor{_sensor} {};
 
-  /* Read the sensor by calling sensor.get() and use the value for
-     statistics. Sample will only be taken if sensor is .valid().
-  */
+/* Read the sensor by calling sensor.get() and use the value for
+   statistics. Sample will only be taken if sensor is .valid().
+*/
 template<typename T>
-  void Statistics<T>::sample() {
-    read_attempts++;
-    // FIXME maybe: potential race condition
-    if (!sensor->valid()) return;
-    T v = sensor->get();
-    count++;
-    sum += v;
-    if (count == 1) {
+void Statistics<T>::sample() {
+  read_attempts++;
+  // FIXME maybe: potential race condition
+  if (!sensor->valid()) return;
+  T v = sensor->get();
+  count++;
+  sum += v;
+  if (count == 1) {
+    _max = v;
+  } else {
+    if (v > _max) {
       _max = v;
-    } else {
-      if (v > _max) {
-        _max = v;
-      }
     }
   }
+}
 
 template<typename T>
 void Statistics<T>::sample(T v) {
@@ -176,28 +160,81 @@ void Statistics<T>::sample(T v) {
   sample();
 }
 
-  /* Returns the proportion attempted samplings that had valid data, as a
-     value between 0 and 1. */
+/* Returns the proportion of attempted samplings that had valid data, as a
+   value between 0 and 1. */
 template<typename T>
   float Statistics<T>::quality() {
-    return (float) count / (float) read_attempts;
-  }
+  return (float) count / (float) read_attempts;
+}
 
-  /* Clear samples and prepare for a new reporting period. */
+/* Clear samples and prepare for a new reporting period. */
 template<typename T>
-  void Statistics<T>::reset() {
-    read_attempts = 0;
-    count = 0;
-    sum = 0;
-  }
+void Statistics<T>::reset() {
+  read_attempts = 0;
+  count = 0;
+  sum = 0;
+}
 
 template<typename T>
 T Statistics<T>::max() {
   return _max;
-  }
-
-template<typename T>
-  T Statistics<T>::mean() {
-    return sum / count;
 }
 
+template<typename T>
+T Statistics<T>::mean() {
+  return sum / count;
+}
+
+struct Position {
+  double latitude;
+  double longitude;
+
+  double COG;
+  double SOG;
+
+  // Note that the stored data is valid at the time this function is called.
+  void set_valid() {
+    timestamp = millis();
+  }
+
+  bool valid() {
+    return timestamp_valid(); // TODO
+  }
+
+  bool timestamp_valid() {
+    return millis() < (timestamp + valid_period);
+  }
+
+protected:
+  // uC mS counter at time message saved. Not time of fix (but probably close).
+  uint32_t timestamp;
+  uint32_t valid_period = 5000;
+};
+
+struct NyanVessel {
+  Position position_gnss_builtin;
+  Position position_nmea;
+
+  SensorAveraging<double, 10> HDT;
+  SensorAveraging<double, 10> AWS;
+  SensorAveraging<double, 10> AWA;
+
+  // Derived values
+  Sensor<double> GWS;
+  Sensor<double> GWD;
+
+  Sensor<double> water_temperature;
+  Sensor<double> water_depth;
+
+  bool getPosition(Position *p) {
+    /* I would like to choose the best position source, but for now will just
+       decide to use internal GNSS, then NMEA one if the first isn't valid. */
+
+    if (this->position_gnss_builtin.valid()) {
+      *p = this->position_gnss_builtin;
+      return true;
+    }
+
+    return false;
+  }
+};

@@ -10,7 +10,6 @@
 
 using namespace std;
 
-
 /*
   Want Ground wind speed and direction.
   Best derive from apparent wind, compass, and GNSS SOG/COG.
@@ -21,9 +20,6 @@ using namespace std;
   because it can't really be done without a leeway sensor. We need GPS anyway
   for report location, so might as well work from apparent to start with.
 */
-
-
-
 
 /* Vectors. Angles in radians. */
 class vec {
