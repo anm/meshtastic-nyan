@@ -72,7 +72,8 @@ void NMEA_read() {
   /* Read and parse NMEA sentences. */
   constexpr uint32_t time_limit = 500; // mS
   uint32_t end_time = millis() + time_limit;
-  while (tcp.available() && millis() < end_time) {
+  //  while (tcp.available() && millis() < end_time) {
+  while (tcp.available()) {
     nmea_buffer[nmea_index] = static_cast<char>(tcp.read());
 
     // There should be no null chars
@@ -90,6 +91,7 @@ void NMEA_read() {
 
         // null terminate, to treat as string
         nmea_buffer[nmea_index-1] = 0;
+        //LOG_DEBUG("Parsing %.6s\n", nmea_buffer);
         parse_sentence(nmea_buffer);
       }
       goto done;
@@ -100,7 +102,7 @@ void NMEA_read() {
     continue;
 
   err:
-    LOG_DEBUG(" NMEA parse error\n");
+    LOG_DEBUG("NMEA parse error\n");
   done:
     nmea_index = 0;
   }
@@ -160,7 +162,6 @@ void signalk_test(NyanVessel v) {
   */
 
   int node_id = 2;
-  int timestamp = 3;
 
   static WiFiClient tcp;
 
@@ -187,26 +188,56 @@ void signalk_test(NyanVessel v) {
 
   String s =
     R"({"context": "vessels.urn:mrn:nyan:)" + String(node_id) + R"(",)"
-    R"("token": ")" + token + R"(",)"
+
+    // Sending token over tcp seems to be unimplemented by SignalK server
+    //    R"("token": ")" + token + R"(",)"
+
     R"("updates": [{"source": {"label": "nyan", "type": "nyan"},)"
-    R"("timestamp": ")" + String(timestamp) + R"(",)" // e.g. 2015-01-07T07:18:44Z
+
+    // Timestamp for local data probably no better than letting SignalK do it on arrival
+    // Timestamp for LoRa received data should probably come from the source
+    //    R"("timestamp": ")" + String(timestamp) + R"(",)" // e.g. 2015-01-07T07:18:44Z
     R"("values": [)";
 
-  // Path reference: http://signalk.org/specification/1.3.0/doc/signalk.pdf
+  // Path reference: http://signalk.org/specification/
 
   Position pos;
   bool havePosition;
   havePosition = v.getPosition(&pos);
   if (havePosition) {
     s +=
-      R"({"path": "environment.wind.speedOverGround", "value": )" + String(pos.SOG) + "}"
+      R"({"path": "navigation.position", "value": {"latitude": )" +
+      String(pos.latitude) + R"(, "longitude": )" + String(pos.longitude) + "}},";
+
+    LOG_DEBUG("pos.latitude is %s by arduino, %f by printf\n", String(pos.latitude), pos.latitude);
+  }
+
+  LOG_DEBUG("v.GWS.stats.quality(): %f v.GWS.stats.mean(): %f\n",
+            v.GWS.stats.quality(), v.GWS.stats.mean());
+
+  if (v.GWS.stats.quality() > 0.1 && v.GWD.stats.quality() > 0.1) {
+    LOG_DEBUG("SignalK: sending ground wind\n");
+
+    R"({"path": "environment.wind.speedOverGround", "meta" : {"units": "C"}, "value": )"
+        + String(v.GWS.stats.mean()) + "}"
+      ",";
+      R"({"path": "environment.wind.directionTrue", "meta" : {"units": "C"}, "value": )"
+        + String(v.GWD.stats.mean()) + "}"
       ",";
   }
 
+  /*
+    environment/wind/directionTrue
+    environment/wind/angleTrueGround
+    environment/outside/pressure (Pa)
+    environment/outside/relativeHumidity
+  */
+
   if (v.water_temperature.valid()) {
     s +=
-      R"({"path": "environment.water.temperature", "units": "C", "value": )" + String(v.water_temperature.get()) + "}"
-        ",";
+      R"({"path": "environment.water.temperature", "meta" : {"units": "C"}, "value": )"
+      + String(v.water_temperature.get()) + "}"
+      ",";
   }
 
   if (v.water_depth.valid()) {
@@ -216,8 +247,9 @@ void signalk_test(NyanVessel v) {
   }
 
   s +=
+    // This is mostly here to have a guaranteed item at the end, that doesn't
+    // have a comma after it, because JSON :(
     R"({"path": "nyan.uptime", "value": )" + String(millis()) + "}"
-    // Must have no comma on list item
     "]}]}\r\n";
 
   LOG_INFO(s.c_str());
@@ -329,11 +361,13 @@ void NyanModule::report_sender_task(void *params) {
 }
 
 void debug_memory(void) {
+#ifdef ESP32
   LOG_DEBUG("ESP.getHeapSize(): %u\n", ESP.getHeapSize());
   LOG_DEBUG("ESP.getFreeHeap(): %u\n", ESP.getFreeHeap());
 
   LOG_DEBUG("Free heap: %u\n", esp_get_free_heap_size());
   LOG_DEBUG("Lowest free heap seen: %u\n", esp_get_minimum_free_heap_size());
+#endif
 }
 
 NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan_telemetry_msg),
@@ -369,6 +403,7 @@ NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan
                 "NYAN report sender",
                 // Stack size, in bytes, not words,
                 // contrary to rtos docs, because espressif...
+                // TODO ifdef to change for other platforms
                 10000,
                 this, // task paramaters
                 5, // priority

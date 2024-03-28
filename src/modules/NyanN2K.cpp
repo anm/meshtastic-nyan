@@ -9,7 +9,19 @@
 #include <N2kMessages.h>
 #include <N2kMessagesEnumToStr.h>
 
+#ifdef RPI_PICO
+#define USE_SPI_CAN
+
+// Literal numbers are used as GPIO numbers
+const uint8_t CAN_SPI_INTERUPT_PIN = 21;
+const uint8_t CAN_SPI_CLOCK_PIN = 6;
+const uint8_t CAN_SPI_MISO_PIN = 4;
+const uint8_t CAN_SPI_MOSI_PIN = 7;
+const uint8_t CAN_SPI_SS_PIN = 5;
+#endif
+
 #ifdef HELTEC_V3
+#define USE_SPI_CAN
 /*
 const uint8_t CAN_SPI_INTERUPT_PIN = 2;
 const uint8_t CAN_SPI_CLOCK_PIN = 5;
@@ -26,7 +38,9 @@ const uint8_t CAN_SPI_SS_PIN = 20; // D5
 #endif
 
 #ifdef HELTEC_WSL_V3
-// TODO, just copied from other heltec for now
+#define USE_SPI_CAN
+
+// FIXME, just copied from other heltec for now
 
 const uint8_t CAN_SPI_INTERUPT_PIN = 19; // D2
 const uint8_t CAN_SPI_CLOCK_PIN = 38; // D4
@@ -37,6 +51,8 @@ const uint8_t CAN_SPI_SS_PIN = 20; // D5
 
 // (it's actually a V1.2 but this is what meshtastic defines)
 #ifdef TBEAM_V10
+#define USE_SPI_CAN
+
 const uint8_t CAN_SPI_INTERUPT_PIN = 2; // D2
 const uint8_t CAN_SPI_CLOCK_PIN = 13; // D4
 const uint8_t CAN_SPI_MISO_PIN = 25; // D3
@@ -46,18 +62,6 @@ const uint8_t CAN_SPI_SS_PIN = 14; // D5
 
 const unsigned char MCP_CLOCK_SPEED = MCP_16MHz;
 const uint16_t RX_BUFFER_SIZE = 256;
-
-typedef struct {
-  unsigned long PGN;
-  void (*Handler)(const tN2kMsg &N2kMsg);
-} tNMEA2000Handler;
-
-void SystemTime(const tN2kMsg &N2kMsg);
-
-tNMEA2000Handler NMEA2000Handlers[]={
-  {126992L,&SystemTime},
-  {0,0}
-};
 
 tNMEA2000_mcp *n2k;
 
@@ -93,7 +97,40 @@ void SystemTime(const tN2kMsg &N2kMsg) {
     }
 }
 
+void HandleWaterDepth(const tN2kMsg &N2kMsg) {
+  unsigned char SID;
+  double dbt;
+  double dbs;
+  double offset;
+
+  if (ParseN2kWaterDepth(N2kMsg, SID, dbt, offset) ) {
+    // TODO: Maybe if offset == 0 measurement should be ignored - probably
+    // uncalibrated sensor, don't know what it's saying.
+    if (offset >= 0) {
+      dbs = dbt + offset;
+      v.water_depth.set(dbs);
+      LOG_DEBUG("N2K: Set water depth to %f from DPT message\n", dbs);
+    } else {
+      // Don't care about depth below keel. Need depth below surface.
+      // dbk = dbt + offset
+      LOG_DEBUG("N2K: Ignoring DPT message with negative offset (depth below keel).\n");
+      return;
+    }
+  }
+}
+
+typedef struct {
+  unsigned long PGN;
+  void (*Handler)(const tN2kMsg &N2kMsg);
+} tNMEA2000Handler;
+
 void HandleNMEA2000Msg(const tN2kMsg &N2kMsg) {
+  tNMEA2000Handler NMEA2000Handlers[]={
+    {128267L,&HandleWaterDepth},
+    {126992L,&SystemTime},
+    {0,0}
+  };
+
   int iHandler;
 
   LOG_DEBUG("Handling PGN %u\n", N2kMsg.PGN);
@@ -108,6 +145,8 @@ void HandleNMEA2000Msg(const tN2kMsg &N2kMsg) {
 }
 
 void nyan_N2K_setup() {
+#ifdef USE_SPI_CAN
+
   /* TODO: Remember ID and settings as required by standard
    *  See NMEA2000/src/NMEA2000.h
    */
@@ -145,17 +184,34 @@ void nyan_N2K_setup() {
 
   // HSIP seems to be the non-default one on both ESP32 and ESP32-S3
   constexpr uint32_t CAN_SPI_SPEED = 1000000;
-  SPIClass *spi = new SPIClass(HSPI);
 
   pinMode(CAN_SPI_CLOCK_PIN, OUTPUT);
   pinMode(CAN_SPI_SS_PIN, OUTPUT);
   pinMode(CAN_SPI_MOSI_PIN, OUTPUT);
 
-  spi->begin(CAN_SPI_CLOCK_PIN, CAN_SPI_MISO_PIN, CAN_SPI_MOSI_PIN, CAN_SPI_SS_PIN);
+#ifdef ESP32
+  SPIClass *spi = new SPIClass(HSPI);
+
+  spi->begin(CAN_SPI_CLOCK_PIN,
+             CAN_SPI_MISO_PIN,
+             CAN_SPI_MOSI_PIN,
+             CAN_SPI_SS_PIN);
   spi->setFrequency(CAN_SPI_SPEED);
 
   // Use hardware chip select
   spi->setHwCs(true);
+#endif
+#ifdef RPI_PICO
+  // SPI1 is used by Meshtastic for the LoRa module
+  auto *spi = &SPI; // or SPI1
+  spi->setRX(CAN_SPI_MISO_PIN);
+  spi->setCS(CAN_SPI_SS_PIN);
+  spi->setSCK(CAN_SPI_CLOCK_PIN);
+  spi->setTX(CAN_SPI_MOSI_PIN);
+  spi->begin(true); // true to use hardware CS
+
+  // TODO: I can haz speed setting? (not in docs with other params)
+#endif
 
   n2k->SetSPI(spi);
 
@@ -171,16 +227,17 @@ void nyan_N2K_setup() {
   }
   */
 
-    /*
+  /*
+  // Wiggle pins for identification / debug porpoises
   while (1) {
-    digitalWrite(CAN_SPI_CLOCK_PIN, 1);
-    digitalWrite(CAN_SPI_SS_PIN, 0);
-    delay(1);
-    digitalWrite(CAN_SPI_CLOCK_PIN, 0);
-    digitalWrite(CAN_SPI_SS_PIN, 1);
-    delay(1);
+  digitalWrite(CAN_SPI_CLOCK_PIN, 1);
+  digitalWrite(CAN_SPI_SS_PIN, 0);
+  delay(1);
+  digitalWrite(CAN_SPI_CLOCK_PIN, 0);
+  digitalWrite(CAN_SPI_SS_PIN, 1);
+  delay(1);
 
-    //    spi->writeBytes((uint8_t*) "meow meow test", 15);
+  //    spi->writeBytes((uint8_t*) "meow meow test", 15);
   }
   */
 
@@ -209,14 +266,15 @@ void nyan_N2K_setup() {
   //  nk2->SetN2kCANReceiveFrameBufSize(50);
   //  n2k->SetN2kCANMsgBufSize(2);
 
-  if (n2k->Open()){
-    LOG_DEBUG("Opened CAN bus\n");
+  if (n2k->Open()) {
+    LOG_INFO("Opened N2K CAN bus\n");
     n2k->ParseMessages(); // Docs says needs to be called promptly after open.
   } else {
-    LOG_ERROR("Failed to open CAN bus\n");
+    LOG_ERROR("Failed to open N2K CAN bus\n");
   }
 
   LOG_DEBUG("CAN: nyan_N2K_setup done\n");
+#endif
 }
 
 void nyan_N2K_loop() {

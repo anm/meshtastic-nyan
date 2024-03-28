@@ -91,7 +91,7 @@ void handle_DPT(const tNMEA0183Msg &msg) {
   } else {
     // Don't care about depth below keel. Need depth below surface.
     // dbk = dbt + offset
-    LOG_DEBUG("Ignoring DPT message with negative offset (depth below keel).");
+    LOG_DEBUG("Ignoring DPT message with negative offset (depth below keel).\n");
     return;
   }
   v.water_depth.set(dbs);
@@ -101,7 +101,8 @@ void handle_DPT(const tNMEA0183Msg &msg) {
 void handle_RMC(const tNMEA0183Msg &msg) {
   double GPSTime;
   char status;
-  Position pos;
+  double latitude;
+  double longitude;
   double COG;
   double SOG;
   unsigned long int DaysSince1970;
@@ -110,10 +111,9 @@ void handle_RMC(const tNMEA0183Msg &msg) {
   char FAAModeIndicator;
   char NavStatus;
 
-  NMEA0183ParseRMC_nc(msg, GPSTime, status, pos.latitude, pos.longitude,
+  NMEA0183ParseRMC_nc(msg, GPSTime, status, latitude, longitude,
                       COG, SOG, DaysSince1970, variation,
                       FAAModeIndicator, NavStatus, &datetime);
-
 
   if ((status != 'A') || (NavStatus == 'V')) {
     LOG_DEBUG("Invalid position from NMEA RMC\n");
@@ -122,12 +122,13 @@ void handle_RMC(const tNMEA0183Msg &msg) {
 
   v.position_nmea.set_valid();
 
-  LOG_DEBUG("Setting data from RMC: COG: %f SOG: %f\n", COG, SOG);
+  LOG_DEBUG("Setting data from RMC: COG: %f SOG: %f lat: %f lon: %f\n",
+            COG, SOG, latitude, longitude);
 
   v.position_nmea.COG = COG;
   v.position_nmea.SOG = SOG;
-  v.position_nmea.latitude = pos.latitude;
-  v.position_nmea.longitude = pos.longitude;
+  v.position_nmea.latitude  = latitude;
+  v.position_nmea.longitude = longitude;
 }
 
 struct tNMEA0183Handler {

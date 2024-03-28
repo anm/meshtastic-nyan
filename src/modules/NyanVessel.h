@@ -7,13 +7,16 @@
 #include <Arduino.h>
 #include "constants.h"
 
+// From meshtastic, used for debugging output
+#include "configuration.h"
+
 template<typename T>
 class Statistics;
 
 template<typename T>
 class Sensor {
  public:
-  Sensor(uint32_t _valid_period = 5000);
+  Sensor(uint32_t _valid_period = 10000);
 
   Statistics<T> stats{this};
 
@@ -41,7 +44,7 @@ public:
 
   /* Returns the proportion attempted samplings that had valid data, as a
      value between 0 and 1. */
-  float quality();
+  double quality();
 
   /* Clear samples and prepare for a new reporting period. */
   void reset();
@@ -163,8 +166,12 @@ void Statistics<T>::sample(T v) {
 /* Returns the proportion of attempted samplings that had valid data, as a
    value between 0 and 1. */
 template<typename T>
-  float Statistics<T>::quality() {
-  return (float) count / (float) read_attempts;
+double Statistics<T>::quality() {
+  if (read_attempts == 0) {
+    return 0;
+  }
+
+  return count / (double) read_attempts;
 }
 
 /* Clear samples and prepare for a new reporting period. */
@@ -194,11 +201,13 @@ struct Position {
 
   // Note that the stored data is valid at the time this function is called.
   void set_valid() {
+    LOG_DEBUG("Setting Position timestamp.\n");
     timestamp = millis();
   }
 
   bool valid() {
-    return timestamp_valid(); // TODO
+    // TODO: Also check fix quality from GNSS data
+    return timestamp_valid();
   }
 
   bool timestamp_valid() {
@@ -208,7 +217,7 @@ struct Position {
 protected:
   // uC mS counter at time message saved. Not time of fix (but probably close).
   uint32_t timestamp;
-  uint32_t valid_period = 5000;
+  uint32_t valid_period = 20000;
 };
 
 struct NyanVessel {
@@ -232,9 +241,17 @@ struct NyanVessel {
 
     if (this->position_gnss_builtin.valid()) {
       *p = this->position_gnss_builtin;
+      LOG_DEBUG("Using gnss_builtin\n");
       return true;
     }
 
+    if (this->position_nmea.valid()) {
+      *p = this->position_nmea;
+      LOG_DEBUG("Using position_nmea\n");
+      return true;
+    }
+
+    LOG_DEBUG("No position available\n");
     return false;
   }
 };
