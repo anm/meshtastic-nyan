@@ -419,12 +419,11 @@ void handleStatic(HTTPRequest *req, HTTPResponse *res)
             file = FSCom.open(filenameGzip.c_str());
             res->setHeader("Content-Type", "text/html");
             if (!file.available()) {
-
-                LOG_WARN("File not available - %s", filenameGzip.c_str());
-                res->println("Web server is running.<br><br>The content you are looking for can't be found. Please see: <a "
+              res->setStatusCode(404);
+              LOG_WARN("File not available - %s\n", filenameGzip.c_str());
+                res->println("Content not found. Maybe filesystem is not flashed properly. Please see: <a "
                              "href=https://meshtastic.org/docs/software/web-client/>FAQ</a>.<br><br><a "
                              "href=/admin>admin</a>");
-
                 return;
             } else {
                 res->setHeader("Content-Encoding", "gzip");
@@ -469,8 +468,7 @@ void handleStatic(HTTPRequest *req, HTTPResponse *res)
 
 void handleFormUpload(HTTPRequest *req, HTTPResponse *res)
 {
-
-    LOG_DEBUG("Form Upload - Disable keep-alive");
+    LOG_DEBUG("Form Upload - Disabling keep-alive\n");
     res->setHeader("Connection", "close");
 
     // First, we need to check the encoding of the form that we have received.
