@@ -9,6 +9,10 @@
 #include <N2kMessages.h>
 #include <N2kMessagesEnumToStr.h>
 
+#include "NyanVessel.h"
+
+extern NyanVessel v;
+
 #ifdef RPI_PICO
 #define USE_SPI_CAN
 
