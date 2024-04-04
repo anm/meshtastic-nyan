@@ -1,4 +1,12 @@
 #include "configuration.h"
+
+#include "modules/NyanModule.h"
+/* Exclude some modules to reduce build time, code size, and possible pin
+   conflicts. */
+#undef HAS_TELEMETRY
+#define MESHTASTIC_EXCLUDE_PAXCOUNTER
+#define MESHTASTIC_EXCLUDE_REMOTEHARDWARE
+
 #if !MESHTASTIC_EXCLUDE_INPUTBROKER
 #include "input/ExpressLRSFiveWay.h"
 #include "input/InputBroker.h"
@@ -46,8 +54,6 @@
 #include "modules/WaypointModule.h"
 #endif
 
-#include "modules/NyanModule.h"
-
 #if ARCH_PORTDUINO
 #include "input/LinuxInputImpl.h"
 #if !MESHTASTIC_EXCLUDE_STOREFORWARD
@@ -55,7 +61,7 @@
 #endif
 #endif
 #if HAS_TELEMETRY
-//#include "modules/Telemetry/DeviceTelemetry.h"
+#include "modules/Telemetry/DeviceTelemetry.h"
 #endif
 #if HAS_SENSOR && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
 #include "main.h"
