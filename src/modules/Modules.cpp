@@ -3,9 +3,12 @@
 #include "modules/NyanModule.h"
 /* Exclude some modules to reduce build time, code size, and possible pin
    conflicts. */
+/*
 #undef HAS_TELEMETRY
-#define MESHTASTIC_EXCLUDE_PAXCOUNTER
-#define MESHTASTIC_EXCLUDE_REMOTEHARDWARE
+#define HAS_TELEMETRY FALSE
+#define MESHTASTIC_EXCLUDE_PAXCOUNTER TRUE
+#define MESHTASTIC_EXCLUDE_REMOTEHARDWARE TRUE
+*/
 
 #if !MESHTASTIC_EXCLUDE_INPUTBROKER
 #include "input/ExpressLRSFiveWay.h"
