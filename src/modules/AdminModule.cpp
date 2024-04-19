@@ -678,11 +678,6 @@ void AdminModule::handleSetModuleConfig(const meshtastic_ModuleConfig &c)
         moduleConfig.has_range_test = true;
         moduleConfig.range_test = c.payload_variant.range_test;
         break;
-    case meshtastic_ModuleConfig_telemetry_tag:
-        LOG_INFO("Set module config: Telemetry");
-        moduleConfig.has_telemetry = true;
-        moduleConfig.telemetry = c.payload_variant.telemetry;
-        break;
     case meshtastic_ModuleConfig_canned_message_tag:
         LOG_INFO("Set module config: Canned Message");
         moduleConfig.has_canned_message = true;
@@ -850,11 +845,6 @@ void AdminModule::handleGetModuleConfig(const meshtastic_MeshPacket &req, const 
             LOG_INFO("Get module config: Range Test");
             res.get_module_config_response.which_payload_variant = meshtastic_ModuleConfig_range_test_tag;
             res.get_module_config_response.payload_variant.range_test = moduleConfig.range_test;
-            break;
-        case meshtastic_AdminMessage_ModuleConfigType_TELEMETRY_CONFIG:
-            LOG_INFO("Get module config: Telemetry");
-            res.get_module_config_response.which_payload_variant = meshtastic_ModuleConfig_telemetry_tag;
-            res.get_module_config_response.payload_variant.telemetry = moduleConfig.telemetry;
             break;
         case meshtastic_AdminMessage_ModuleConfigType_CANNEDMSG_CONFIG:
             LOG_INFO("Get module config: Canned Message");

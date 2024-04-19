@@ -44,13 +44,14 @@ const uint8_t CAN_SPI_SS_PIN = 20; // D5
 #ifdef HELTEC_WSL_V3
 #define USE_SPI_CAN
 
-// FIXME, just copied from other heltec for now
+// FIXME
+// Maybe suitable pins: 17,21,18,2
 
-const uint8_t CAN_SPI_INTERUPT_PIN = 19; // D2
-const uint8_t CAN_SPI_CLOCK_PIN = 38; // D4
-const uint8_t CAN_SPI_MISO_PIN = 33; // D3
-const uint8_t CAN_SPI_MOSI_PIN = 34; // D6
-const uint8_t CAN_SPI_SS_PIN = 20; // D5
+const uint8_t CAN_SPI_INTERUPT_PIN = 38; // D2
+const uint8_t CAN_SPI_CLOCK_PIN = 39; // D4
+const uint8_t CAN_SPI_MISO_PIN = 40; // D3
+const uint8_t CAN_SPI_MOSI_PIN = 41; // D6
+const uint8_t CAN_SPI_SS_PIN = 42; // D5
 #endif
 
 // (it's actually a V1.2 but this is what meshtastic defines)

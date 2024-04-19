@@ -384,8 +384,12 @@ void setup()
 
 #if !MESHTASTIC_EXCLUDE_I2C
 #if defined(I2C_SDA1) && defined(ARCH_RP2040)
-    Wire1.setSDA(I2C_SDA1);
-    Wire1.setSCL(I2C_SCL1);
+    bool set_ok;
+    set_ok =  Wire1.setSDA(I2C_SDA1);
+    set_ok &= Wire1.setSCL(I2C_SCL1);
+    if (!set_ok) {
+      LOG_ERROR("Could not set I2C pins.");
+    }
     Wire1.begin();
 #elif defined(I2C_SDA1) && !defined(ARCH_RP2040)
     Wire1.begin(I2C_SDA1, I2C_SCL1);
@@ -394,8 +398,12 @@ void setup()
 #endif
 
 #if defined(I2C_SDA) && defined(ARCH_RP2040)
-    Wire.setSDA(I2C_SDA);
-    Wire.setSCL(I2C_SCL);
+    bool set_ok;
+    set_ok =  Wire.setSDA(I2C_SDA);
+    set_ok &= Wire.setSCL(I2C_SCL);
+    if (!set_ok) {
+      LOG_ERROR("Could not set I2C pins.");
+    }
     Wire.begin();
 #elif defined(I2C_SDA) && !defined(ARCH_RP2040)
     Wire.begin(I2C_SDA, I2C_SCL);

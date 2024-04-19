@@ -1,7 +1,22 @@
-#define I2C_SCL SCL
-#define I2C_SDA SDA
+#define I2C_SCL 47
+#define I2C_SDA 48
+
+// Which I2C bus: Wire, Wire1, ...
+#define INA3221_BUS Wire
+
+/*
+GND 1000000 64
+VS  1000001 65
+SDA 1000010 66
+SCL 1000011 67
+*/
+#define INA3221_ADDR 67
 
 #define LED_PIN LED
+
+#define HAS_SCREEN 0
+#define HAS_TELEMETRY 0
+#define HAS_SENSOR 0
 
 #define VEXT_ENABLE Vext // active low, powers the oled display and the lora antenna boost
 #define VEXT_ON_VALUE LOW

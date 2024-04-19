@@ -15,6 +15,8 @@ class NyanModule : public ProtobufModule<nyan_telemetry>,
   virtual int32_t runOnce() override;
   virtual bool handleReceivedProtobuf(const meshtastic_MeshPacket &mp, nyan_telemetry *telemetry) override;
 
+  static void sample_onboard_sensors(void);
+
   static void report_sender_task(void *params);
   static void sensor_sampler_task(void *params);
   void send_report();

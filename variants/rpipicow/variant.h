@@ -12,12 +12,20 @@
 // SDA = 4
 // SCL = 5
 
+//#define I2C_SDA1 14
+//#define I2C_SCL1 15
+//#define INA3221_BUS Wire1
+
+#define I2C_SDA 16
+#define I2C_SCL 17
+#define INA3221_BUS Wire
+
 // Recommended pins for SerialModule:
 // txd = 8
 // rxd = 9
 
 #define EXT_NOTIFY_OUT 22
-#define BUTTON_PIN 17
+#define BUTTON_PIN 13
 
 #define LED_PIN LED_BUILTIN
 

@@ -1,14 +1,16 @@
 #include "configuration.h"
 
 #include "modules/NyanModule.h"
+
 /* Exclude some modules to reduce build time, code size, and possible pin
    conflicts. */
-/*
 #undef HAS_TELEMETRY
-#define HAS_TELEMETRY FALSE
+#define HAS_TELEMETRY 0
+#undef HAS_SENSOR
+#define HAS_SENSOR 0
 #define MESHTASTIC_EXCLUDE_PAXCOUNTER TRUE
 #define MESHTASTIC_EXCLUDE_REMOTEHARDWARE TRUE
-*/
+
 
 #if !MESHTASTIC_EXCLUDE_INPUTBROKER
 #include "input/ExpressLRSFiveWay.h"
@@ -217,8 +219,9 @@ void setupModules()
         }
 #endif
 #endif
+
 #if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_POWER_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
-        new PowerTelemetryModule();
+        //new PowerTelemetryModule();
 #endif
 
 #if (defined(ARCH_ESP32) || defined(ARCH_NRF52) || defined(ARCH_RP2040)) && !defined(CONFIG_IDF_TARGET_ESP32S2) &&               \

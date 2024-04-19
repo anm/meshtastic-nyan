@@ -7,6 +7,9 @@
 
 #include <WiFi.h>
 
+//#include "Telemetry/Sensor/INA3221Sensor.h"
+#include "INA3221.h"
+
 #include "NyanModule.h"
 #include "NyanNMEA.h"
 #include "NyanN2K.h"
@@ -52,7 +55,7 @@ void NMEA_read() {
   static uint8_t nmea_index = 0;
 
   const uint16_t port = 10110;
-  const char * host = "209.16.157.57";
+  const char *host = "209.16.157.57";
 
   if (!WiFi.isConnected()) {
     LOG_INFO("WiFi not connected\n");
@@ -165,7 +168,7 @@ void signalk_test(NyanVessel v) {
 
   static WiFiClient tcp;
 
-  const char * host = "nyan-host-0.river.cat";
+  const char *host = "nyan-host-0.river.cat";
   const uint16_t port = 8375;
 
   // SignalK security token
@@ -330,10 +333,54 @@ int32_t NyanModule::runOnce() {
   get_local_GPS(v);
 
   signalk_test(v);
+  sample_onboard_sensors();
 
   LOG_INFO("No of meshtastic tasks: %u\n", task_count());
 
   return 3000; // period in milliseconds
+}
+
+//extern INA3221Sensor ina3221Sensor;
+
+INA3221 ina3221 = INA3221(&INA3221_BUS, (ina3221_addr_t) INA3221_ADDR);
+//INA3221 ina3221 = INA3221((ina3221_addr_t) INA3221_ADDR);
+
+/* Sample I2C Sensors */
+void NyanModule::sample_onboard_sensors(void) {
+
+  /*
+  Wire1.end();
+
+  bool set_ok;
+  set_ok =  Wire1.setSDA(I2C_SDA1);
+  set_ok &= Wire1.setSCL(I2C_SCL1);
+  if (!set_ok) {
+    LOG_ERROR("Could not set I2C pins.");
+  }
+
+  Wire1.begin();
+  */
+
+  ina3221.setShuntRes(100, 100, 100); // In milliOhms
+  ina3221.setFilterRes(10, 10, 10); // In Ohms
+
+  delay(10);
+
+  ina3221.reset();
+
+  delay(10);
+
+  if (ina3221.getManufID() == 0x5449) {
+    LOG_DEBUG("Read INA3221 Maufacturer ID OK.");
+  } else {
+    LOG_ERROR("Read INA3221 Maufacturer ID Failed.");
+  }
+
+  delay(10);
+
+  float v1 = ina3221.getVoltage(INA3221_CH1);
+
+  LOG_DEBUG("INA3221 CH1: %fV\n", v1);
 }
 
 /* A FreeRTOS task to read / filter / store sensor data. */
@@ -343,6 +390,7 @@ void NyanModule::sensor_sampler_task(void *params) {
     LOG_DEBUG("NYAN sampler stack high water mark: %u\n",
               uxTaskGetStackHighWaterMark(NULL));
     sample_NMEA_sensors(v);
+    //    sample_onboard_sensors();
     delay(5000);
   }
 }
@@ -404,7 +452,7 @@ NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan
                 // Stack size, in bytes, not words,
                 // contrary to rtos docs, because espressif...
                 // TODO ifdef to change for other platforms
-                10000,
+                5000,
                 this, // task paramaters
                 5, // priority
                 &reporter_task_handle);
