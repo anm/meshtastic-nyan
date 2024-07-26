@@ -351,10 +351,27 @@ int32_t NyanModule::runOnce() {
   return 3000; // period in milliseconds
 }
 
-//extern INA3221Sensor ina3221Sensor;
-
 INA3221 ina3221 = INA3221(&INA3221_BUS, (ina3221_addr_t) INA3221_ADDR);
 //INA3221 ina3221 = INA3221((ina3221_addr_t) INA3221_ADDR);
+
+void INA3221_setup(void) {
+  LOG_INFO("INA3221_setup\n");
+
+  ina3221.setShuntRes(100, 100, 100); // In milliOhms
+  ina3221.setFilterRes(10, 10, 10); // In Ohms
+
+  delay(10);
+  ina3221.reset();
+  delay(10);
+
+  if (ina3221.getManufID() == 0x5449) {
+    LOG_DEBUG("Read INA3221 Maufacturer ID OK.\n");
+  } else {
+    LOG_ERROR("Read INA3221 Maufacturer ID Failed.\n");
+  }
+
+  delay(10);
+}
 
 /* Sample I2C Sensors */
 void NyanModule::sample_onboard_sensors(void) {
@@ -371,26 +388,11 @@ void NyanModule::sample_onboard_sensors(void) {
   Wire1.begin();
   */
 
-  ina3221.setShuntRes(100, 100, 100); // In milliOhms
-  ina3221.setFilterRes(10, 10, 10); // In Ohms
+  float V_in = ina3221.getVoltage(INA3221_CH1);
+  float I_in = ina3221.getCurrentCompensated(INA3221_CH1) / 1000.0;
+  float V_5V = ina3221.getVoltage(INA3221_CH2);
 
-  delay(10);
-
-  ina3221.reset();
-
-  delay(10);
-
-  if (ina3221.getManufID() == 0x5449) {
-    LOG_DEBUG("Read INA3221 Maufacturer ID OK.");
-  } else {
-    LOG_ERROR("Read INA3221 Maufacturer ID Failed.");
-  }
-
-  delay(10);
-
-  float v1 = ina3221.getVoltage(INA3221_CH1);
-
-  LOG_DEBUG("INA3221 CH1: %fV\n", v1);
+  LOG_DEBUG("INA3221 V_in: %.3fV\t I_in: %.3fA\t V_5V: %.3fV\n", V_in, I_in, V_5V);
 }
 
 /* A FreeRTOS task to read / filter / store sensor data. */
@@ -431,13 +433,16 @@ void debug_memory(void) {
 NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan_telemetry_msg),
                            concurrency::OSThread("NyanModule") {
 
-  LOG_INFO("Starting Nyan Module");
+  LOG_INFO("Starting Nyan Module\n");
   LOG_DEBUG("WiFi enabled?: %u\n", config.network.wifi_enabled);
 
   TaskHandle_t sensor_task_handle;
   TaskHandle_t reporter_task_handle;
 
   debug_memory();
+
+  INA3221_setup();
+  AS3935_setup();
 
 #ifdef USE_N2K
   nyan_N2K_setup();
@@ -483,6 +488,4 @@ NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan
   }
   LOG_DEBUG("After create task\n");
   debug_memory();
-
-  AS3935_setup();
 }
