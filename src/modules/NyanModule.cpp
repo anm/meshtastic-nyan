@@ -1,25 +1,28 @@
 #include <string.h>
 #include <assert.h>
 
+#include <WiFi.h>
+#include "os_status.h"
+#include "mesh/NodeDB.h"
+#include "gps/RTC.h"
+
 #include "configuration.h"
 #include "main.h"
 #include "MeshService.h"
 
-#include <WiFi.h>
-
 //#include "Telemetry/Sensor/INA3221Sensor.h"
 #include "INA3221.h"
+#include "Lightning.h"
 
 #include "NyanModule.h"
 #include "NyanNMEA.h"
+
+#ifdef USE_N2K
 #include "NyanN2K.h"
+#endif
+
 #include "NyanVessel.h"
 #include "wind.h"
-
-#include "mesh/NodeDB.h"
-#include "gps/RTC.h"
-
-#include "os_status.h"
 
 NyanVessel v;
 
@@ -327,8 +330,16 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
    Delayed to meet desired period, which is the return value.
 */
 int32_t NyanModule::runOnce() {
+  // NMEA tcp
   NMEA_read();
+
+#ifdef USE_N2K
   nyan_N2K_loop();
+#endif
+
+#ifdef USE_NMEA_SERIAL
+  NMEA_serial_loop();
+#endif
 
   get_local_GPS(v);
 
@@ -347,7 +358,6 @@ INA3221 ina3221 = INA3221(&INA3221_BUS, (ina3221_addr_t) INA3221_ADDR);
 
 /* Sample I2C Sensors */
 void NyanModule::sample_onboard_sensors(void) {
-
   /*
   Wire1.end();
 
@@ -428,6 +438,15 @@ NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan
   TaskHandle_t reporter_task_handle;
 
   debug_memory();
+
+#ifdef USE_N2K
+  nyan_N2K_setup();
+#endif
+
+#ifdef USE_NMEA_SERIAL
+  NMEA_serial_setup();
+#endif
+
   auto create_return_val =
     xTaskCreate(NyanModule::sensor_sampler_task,
                 "NYAN sensor sampler",
@@ -465,5 +484,5 @@ NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan
   LOG_DEBUG("After create task\n");
   debug_memory();
 
-  nyan_N2K_setup();
+  AS3935_setup();
 }

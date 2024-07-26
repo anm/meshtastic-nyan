@@ -273,7 +273,7 @@ void nyan_N2K_setup() {
 
   if (n2k->Open()) {
     LOG_INFO("Opened N2K CAN bus\n");
-    n2k->ParseMessages(); // Docs says needs to be called promptly after open.
+    n2k->ParseMessages(); // Docs say needs to be called promptly after open.
   } else {
     LOG_ERROR("Failed to open N2K CAN bus\n");
   }

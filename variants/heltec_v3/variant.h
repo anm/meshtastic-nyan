@@ -1,3 +1,19 @@
+// Which I2C bus: Wire, Wire1, ...
+#define INA3221_BUS Wire1
+
+/*
+  INA3221 Address is set by jumping it's select pin as follows:
+  GND 1000000 64
+  VS  1000001 65
+  SDA 1000010 66
+  SCL 1000011 67
+*/
+#define INA3221_ADDR 67
+
+#define HAS_SCREEN 1
+#define HAS_TELEMETRY 0
+#define HAS_SENSOR 0
+
 #define LED_PIN LED
 
 #define USE_SSD1306 // Heltec_v3 has a SSD1306 display
@@ -6,7 +22,13 @@
 #define I2C_SDA SDA_OLED // I2C pins for this board
 #define I2C_SCL SCL_OLED
 
-// Enable secondary bus for external periherals
+#define USE_NMEA_SERIAL
+#define NMEA0183_UART_TX 6
+#define NMEA0183_UART_RX 7
+
+// Enable secondary bus for external peripherals
+#define SDA 4
+#define SCL 5
 #define I2C_SDA1 SDA
 #define I2C_SCL1 SCL
 

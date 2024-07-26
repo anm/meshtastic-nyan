@@ -1,3 +1,19 @@
+/*
+  Pins needed to allocate:
+  JTAG
+  I2C
+  Lightning sensor interrupt pin
+  SPI, for CAN, or CAN directly.
+  UART for NMEA0183
+
+
+  GPIO39 	MTCK
+  GPIO40 	MTDO
+  GPIO41 	MTDI
+  GPIO42 	MTMS
+  GPIO3 	Switch: LOW for JTAG on pins, HIGH for USB JTAG. Function fuse dependent.
+*/
+
 #define I2C_SCL 47
 #define I2C_SDA 48
 
@@ -11,6 +27,10 @@ SDA 1000010 66
 SCL 1000011 67
 */
 #define INA3221_ADDR 67
+
+#define USE_NMEA_SERIAL
+#define NMEA0183_UART_TX 6
+#define NMEA0183_UART_RX 7
 
 #define LED_PIN LED
 

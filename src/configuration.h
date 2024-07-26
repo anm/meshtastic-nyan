@@ -217,7 +217,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 
 /* Step #2: follow with defines common to the architecture;
-622   also enable HAS_ option not specifically disabled by variant.h */
+   also enable HAS_ option not specifically disabled by variant.h */
 #include "architecture.h"
 
 #ifndef DEFAULT_REBOOT_SECONDS
