@@ -357,7 +357,7 @@ INA3221 ina3221 = INA3221(&INA3221_BUS, (ina3221_addr_t) INA3221_ADDR);
 void INA3221_setup(void) {
   LOG_INFO("INA3221_setup\n");
 
-  ina3221.setShuntRes(100, 100, 100); // In milliOhms
+  ina3221.setShuntRes(50, 100, 100); // In milliOhms
   ina3221.setFilterRes(10, 10, 10); // In Ohms
 
   delay(10);
