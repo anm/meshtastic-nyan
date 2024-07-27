@@ -146,7 +146,7 @@ tNMEA0183Handler NMEA0183Handlers[]={
 };
 
 void HandleNMEA0183Msg(const tNMEA0183Msg &NMEA0183Msg) {
-  LOG_DEBUG("HandleNMEA0183Msg() running");
+  //LOG_DEBUG("HandleNMEA0183Msg() running\n");
 
   int iHandler;
   // Find handler
@@ -237,7 +237,7 @@ bool parse_sentence(const char *buf) {
 tNMEA0183 NMEA0183_Serial;
 
 void NMEA_serial_setup(void) {
-  LOG_INFO("Starting NMEA serial");
+  LOG_INFO("Starting NMEA serial\n");
   Serial2.begin(4800, SERIAL_8N1);
 #ifdef ARCH_RP2040
   Serial2.setPinout(NMEA0183_UART_TX, NMEA0183_UART_RX);
@@ -248,10 +248,10 @@ void NMEA_serial_setup(void) {
   NMEA0183_Serial.SetMessageStream(&Serial2);
   NMEA0183_Serial.SetMsgHandler(HandleNMEA0183Msg);
   bool opened = NMEA0183_Serial.Open();
-  if (!opened) LOG_ERROR("NMEA0183_Serial.Open() failed");
+  if (!opened) LOG_ERROR("NMEA0183_Serial.Open() failed\n");
 }
 
 void NMEA_serial_loop(void) {
-  LOG_DEBUG("NMEA serial loop");
+  //LOG_DEBUG("NMEA serial loop\n");
   NMEA0183_Serial.ParseMessages();
 }

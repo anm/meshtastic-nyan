@@ -10,7 +10,6 @@
 #include "main.h"
 #include "MeshService.h"
 
-//#include "Telemetry/Sensor/INA3221Sensor.h"
 #include "INA3221.h"
 #include "Lightning.h"
 
@@ -58,7 +57,7 @@ void NMEA_read() {
   static uint8_t nmea_index = 0;
 
   const uint16_t port = 10110;
-  const char *host = "209.16.157.57";
+  const char *host = "shore.halekai.uk";
 
   if (!WiFi.isConnected()) {
     LOG_INFO("WiFi not connected\n");
@@ -167,7 +166,7 @@ void signalk_test(NyanVessel v) {
    * UDP?
   */
 
-  int node_id = 2;
+  int node_id = 0;
 
   static WiFiClient tcp;
 
@@ -346,7 +345,9 @@ int32_t NyanModule::runOnce() {
   signalk_test(v);
   sample_onboard_sensors();
 
-  LOG_INFO("No of meshtastic tasks: %u\n", task_count());
+  AS3935_check_lightning();
+
+  LOG_DEBUG("No of meshtastic tasks: %u\n", task_count());
 
   return 3000; // period in milliseconds
 }
@@ -432,7 +433,6 @@ void debug_memory(void) {
 
 NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan_telemetry_msg),
                            concurrency::OSThread("NyanModule") {
-
   LOG_INFO("Starting Nyan Module\n");
   LOG_DEBUG("WiFi enabled?: %u\n", config.network.wifi_enabled);
 

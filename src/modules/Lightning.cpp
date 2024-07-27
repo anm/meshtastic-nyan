@@ -130,7 +130,7 @@ void AS3935_setup(void) {
   //lightning.setIndoorOutdoor(INDOOR);
 
   // 1-7. Higher gives greater noise rejection.
-  //lightning.setNoiseLevel(setNoiseLevel);
+  lightning.setNoiseLevel(2); // 5 is high enough in the hacklab
 
   // 1-10. Squelch level.
   //lightning.watchdogThreshold(threshVal);
@@ -140,15 +140,14 @@ void AS3935_setup(void) {
   lightning.spikeRejection(2);
 
   int int_reg = lightning.readInterruptReg();
-  LOG_DEBUG("Initial read of int reg: %u", int_reg);
+  LOG_DEBUG("Initial read of int reg: %u\n", int_reg);
 }
 
-void check_lightning(void) {
+void AS3935_check_lightning(void) {
+  uint8_t distance;
+
   if (digitalRead(LIGHTNING_IRQ_PIN)) {
-    // Hardware has alerted us to an event, now we read the interrupt register
-    // to see exactly what it is.
     int intVal = lightning.readInterruptReg();
-    LOG_DEBUG("Lightning interrupt pin high. Interrupt register: %u\n", intVal);
 
     switch (intVal) {
       // TODO: Increment counters for this reporting period.
@@ -164,10 +163,14 @@ void check_lightning(void) {
     case LIGHTNING_INT:
       LOG_INFO("Lightning Sensor: Lightning detected!\n");
 
-      uint8_t distance = lightning.distanceToStorm();
+      distance = lightning.distanceToStorm();
       LOG_INFO("Lightning distance approx %u km\n", distance);
 
       // TODO: Send report immediatly, I think.
+      break;
+
+    default:
+      LOG_ERROR("Lightning Sensor: Unknown value in interrupt register: %u\n", intVal);
       break;
     }
   }
