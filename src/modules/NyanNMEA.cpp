@@ -14,7 +14,7 @@ void handle_MTW(const tNMEA0183Msg &msg) {
   if ((msg.FieldCount() >= 2) && (msg.Field(1)[0] == 'C')) {
     double temp = NMEA0183GetDouble(msg.Field(0));
     v.water_temperature.set(temp);
-    LOG_INFO("Parsed MTW: %.2fC\n", temp);
+    LOG_DEBUG("Parsed MTW: %.2fC\n", temp);
   }
 }
 
@@ -22,7 +22,7 @@ void handle_HDT(const tNMEA0183Msg &msg) {
   if ((msg.FieldCount() >= 2) && (msg.Field(1)[0] == 'T')) {
     double heading = NMEA0183GetDouble(msg.Field(0));
     v.HDT.set(heading);
-    LOG_INFO("Parsed HDT: %f\n", heading);
+    LOG_DEBUG("Parsed HDT: %f\n", heading);
   }
 }
 
@@ -68,7 +68,7 @@ void handle_MWV(const tNMEA0183Msg &msg) {
   double wind_angle = NMEA0183GetDouble(msg.Field(0));
   v.AWA.set(wind_angle);
 
-  LOG_INFO("MWV - AWS: %f AWA: %f\n", wind_speed, wind_angle);
+  LOG_DEBUG("MWV - AWS: %f AWA: %f\n", wind_speed, wind_angle);
 }
 
 // Always in meters

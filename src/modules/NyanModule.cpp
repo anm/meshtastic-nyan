@@ -107,7 +107,7 @@ void NMEA_read() {
     continue;
 
   err:
-    LOG_DEBUG("NMEA parse error\n");
+    LOG_ERROR("NMEA parse error\n");
   done:
     nmea_index = 0;
   }
@@ -342,7 +342,8 @@ int32_t NyanModule::runOnce() {
 
   get_local_GPS(v);
 
-  signalk_test(v);
+  //signalk_test(v); // tcp connection failurs give errors from ESP IDF, which I think are causing meshtastic serial protocol to fail. arg.
+
   sample_onboard_sensors();
 
   AS3935_check_lightning();
@@ -408,7 +409,7 @@ void NyanModule::sensor_sampler_task(void *params) {
   }
 }
 
-/* A FreeRTOS task to periodically compile metob reports */
+/* A FreeRTOS task to periodically send metob reports */
 void NyanModule::report_sender_task(void *params) {
   NyanModule *nm = (NyanModule *) params;
   LOG_DEBUG("NYAN reporter stack high water mark: %u\n",
@@ -416,7 +417,6 @@ void NyanModule::report_sender_task(void *params) {
 
   while(true) {
     delay(met_reporting_period);
-    LOG_DEBUG("NYAN sending report\n");
     nm->send_report();
   }
 }
@@ -434,7 +434,7 @@ void debug_memory(void) {
 NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan_telemetry_msg),
                            concurrency::OSThread("NyanModule") {
   LOG_INFO("Starting Nyan Module\n");
-  LOG_DEBUG("WiFi enabled?: %u\n", config.network.wifi_enabled);
+  LOG_INFO("WiFi enabled?: %u\n", config.network.wifi_enabled);
 
   TaskHandle_t sensor_task_handle;
   TaskHandle_t reporter_task_handle;
