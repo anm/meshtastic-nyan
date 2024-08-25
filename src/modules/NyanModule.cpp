@@ -11,7 +11,10 @@
 #include "MeshService.h"
 
 #include "INA3221.h"
+
+#ifdef USE_AS3935
 #include "Lightning.h"
+#endif
 
 #include "NyanModule.h"
 #include "NyanNMEA.h"
@@ -312,15 +315,23 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
     return false;
   }
 
-  screen->print("Nyan RXed ");
+  screen->print("Nyan RXed");
 
-  LOG_DEBUG("handleReceivedProtobuf() called. "
-            "Got GWS_mean: %u, GWS_gust: %u, GWD_mean: %u\n",
-            telemetry->GWS_mean,
-            telemetry->GWS_gust,
-            telemetry->GWD_mean);
+  // FIXME: handle null if possible
 
-  return true;
+  LOG_DEBUG("handleReceivedProtobuf() called.");
+
+  LOG_INFO("Received Nyan telemetry from 0x%0x (ID: 0x%x)\n", mp.from, mp.id);
+  LOG_INFO("GWS_mean: %u, GWS_gust: %u, GWD_mean: %u\n",
+           telemetry->GWS_mean,
+           telemetry->GWS_gust,
+           telemetry->GWD_mean);
+
+  LOG_INFO("Water temperature %f°C\n", telemetry->water_temperature);
+  LOG_INFO("Water depth %fm\n", telemetry->water_depth);
+
+  // Pass to other modules too. Maybe needed for the router to rebroadcast it?
+  return false;
 }
 
 /* Periodically send ship data over mesh. */
@@ -342,21 +353,28 @@ int32_t NyanModule::runOnce() {
 
   get_local_GPS(v);
 
-  //signalk_test(v); // tcp connection failurs give errors from ESP IDF, which I think are causing meshtastic serial protocol to fail. arg.
+  // tcp connection failures cause error messages to be sent from ESP IDF,
+  // which I think are causing meshtastic serial protocol to fail. arg.
+  // signalk_test(v);
 
   sample_onboard_sensors();
 
+#ifdef USE_AS3935
   AS3935_check_lightning();
+#endif
 
   LOG_DEBUG("No of meshtastic tasks: %u\n", task_count());
 
   return 3000; // period in milliseconds
 }
 
+#ifdef USE_INA3221
 INA3221 ina3221 = INA3221(&INA3221_BUS, (ina3221_addr_t) INA3221_ADDR);
 //INA3221 ina3221 = INA3221((ina3221_addr_t) INA3221_ADDR);
+#endif
 
 void INA3221_setup(void) {
+#ifdef USE_INA3221
   LOG_INFO("INA3221_setup\n");
 
   ina3221.setShuntRes(50, 100, 100); // In milliOhms
@@ -373,6 +391,18 @@ void INA3221_setup(void) {
   }
 
   delay(10);
+#endif
+}
+
+
+void read_INA3221() {
+#ifdef USE_INA3221
+  float V_in = ina3221.getVoltage(INA3221_CH1);
+  float I_in = ina3221.getCurrentCompensated(INA3221_CH1) / 1000.0;
+  float V_5V = ina3221.getVoltage(INA3221_CH2);
+
+  LOG_DEBUG("INA3221 V_in: %.3fV\t I_in: %.3fA\t V_5V: %.3fV\n", V_in, I_in, V_5V);
+#endif
 }
 
 /* Sample I2C Sensors */
@@ -390,11 +420,7 @@ void NyanModule::sample_onboard_sensors(void) {
   Wire1.begin();
   */
 
-  float V_in = ina3221.getVoltage(INA3221_CH1);
-  float I_in = ina3221.getCurrentCompensated(INA3221_CH1) / 1000.0;
-  float V_5V = ina3221.getVoltage(INA3221_CH2);
-
-  LOG_DEBUG("INA3221 V_in: %.3fV\t I_in: %.3fA\t V_5V: %.3fV\n", V_in, I_in, V_5V);
+  read_INA3221();
 }
 
 /* A FreeRTOS task to read / filter / store sensor data. */
@@ -441,8 +467,13 @@ NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan
 
   debug_memory();
 
+#ifdef USE_INA3221
   INA3221_setup();
+#endif
+
+#ifdef USE_AS3935
   AS3935_setup();
+#endif
 
 #ifdef USE_N2K
   nyan_N2K_setup();

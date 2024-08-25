@@ -14,11 +14,14 @@
 
 //#define I2C_SDA1 14
 //#define I2C_SCL1 15
+
+//#define USE_INA3221
 //#define INA3221_BUS Wire1
 
 #define I2C_SDA 16
 #define I2C_SCL 17
 #define INA3221_BUS Wire
+#define INA3221_ADDR 67
 
 // Recommended pins for SerialModule:
 // txd = 8

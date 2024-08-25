@@ -237,6 +237,7 @@ bool parse_sentence(const char *buf) {
 tNMEA0183 NMEA0183_Serial;
 
 void NMEA_serial_setup(void) {
+#ifdef USE_NMEA_SERIAL
   LOG_INFO("Starting NMEA serial\n");
   Serial2.begin(4800, SERIAL_8N1);
 #ifdef ARCH_RP2040
@@ -249,9 +250,12 @@ void NMEA_serial_setup(void) {
   NMEA0183_Serial.SetMsgHandler(HandleNMEA0183Msg);
   bool opened = NMEA0183_Serial.Open();
   if (!opened) LOG_ERROR("NMEA0183_Serial.Open() failed\n");
+#endif
 }
 
 void NMEA_serial_loop(void) {
+#ifdef USE_NMEA_SERIAL
   //LOG_DEBUG("NMEA serial loop\n");
   NMEA0183_Serial.ParseMessages();
+#endif
 }

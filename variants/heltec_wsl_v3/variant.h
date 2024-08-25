@@ -17,6 +17,10 @@
 #define I2C_SCL 47
 #define I2C_SDA 48
 
+// Lightning sensor
+#define USE_AS3935
+
+#define USE_INA3221
 // Which I2C bus: Wire, Wire1, ...
 #define INA3221_BUS Wire
 
