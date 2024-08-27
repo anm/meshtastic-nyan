@@ -156,11 +156,12 @@ void sample_NMEA_sensors(NyanVessel& v) {
             v.HDT.get(), v.AWA.raw(), v.AWA.get(),
             v.AWS.raw(), v.AWS.get());
 
+  /* Ground wind */
   double GWS, GWD;
-  if (Wind::derive_ground_wind(v, GWS, GWD)) {
-    v.GWS.stats.sample(GWS);
-    v.GWD.stats.sample(GWD);
-  }
+  Wind::derive_ground_wind(v, GWS, GWD);
+  v.GWS.stats.sample(GWS);
+  v.GWD.stats.sample(GWD);
+
 }
 
 void signalk_test(NyanVessel v) {
@@ -307,6 +308,12 @@ void NyanModule::send_report() {
     send = true;
     telemetry.water_depth = v.water_depth.get();
     LOG_DEBUG("Sending water depth %fm\n", telemetry.water_depth);
+  }
+
+  if (v.water_depth_below_keel.valid()) {
+    send = true;
+    telemetry.water_depth = v.water_depth_below_keel.get();
+    LOG_DEBUG("Sending water depth below keel%fm\n", telemetry.water_depth_below_keel);
   }
 
   if (send) {

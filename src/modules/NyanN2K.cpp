@@ -118,7 +118,8 @@ void HandleWaterDepth(const tN2kMsg &N2kMsg) {
     } else {
       // Don't care about depth below keel. Need depth below surface.
       // dbk = dbt + offset
-      LOG_DEBUG("N2K: Ignoring DPT message with negative offset (depth below keel).\n");
+      v.water_depth_below_keel.set(dbs);
+      LOG_DEBUG("N2K: Got DPT message with negative offset (depth below keel).\n");
       return;
     }
   }
@@ -174,9 +175,13 @@ void HandleHeading(const tN2kMsg &N2kMsg) {
       break;
 
     case N2khr_magnetic:
-      // FIXME variation / deviation
-      v.HDT.set(RadToDeg(Heading));
       LOG_DEBUG("N2k got magnetic heading %f\n", RadToDeg(Heading));
+      if (! v.HDT.valid()) {
+        // Only use it if we don't have a true heading already
+        // FIXME variation / deviation
+        v.HDT.set(RadToDeg(Heading));
+        LOG_DEBUG("N2k got magnetic heading %f\n", RadToDeg(Heading));
+      }
       break;
     }
   }
@@ -198,19 +203,43 @@ void HandleCOGSOG(const tN2kMsg &N2kMsg) {
   }
 }
 
-/*
+
+// GNSS Position Data
 void Handle129029(const tN2kMsg &N2kMsg) {
   unsigned char SID;
+  uint16_t DaysSince1970;
+  double SecondsSinceMidnight;
+  double latitude;
+  double longitude;
+  double Altitude;
+  tN2kGNSStype GNSStype;
+  tN2kGNSSmethod GNSSmethod;
+  unsigned char nSatellites;
+  double HDOP;
+  double PDOP;
+  double GeoidalSeparation;
+  unsigned char nReferenceStations;
+  tN2kGNSStype ReferenceStationType;
+  uint16_t ReferenceSationID;
+  double AgeOfCorrection;
 
-  bool ParseN2kPGN129029(const tN2kMsg &N2kMsg, unsigned char &SID, uint16_t &DaysSince1970, double &SecondsSinceMidnight,
-                     double &Latitude, double &Longitude, double &Altitude,
-                     tN2kGNSStype &GNSStype, tN2kGNSSmethod &GNSSmethod,
-                     unsigned char &nSatellites, double &HDOP, double &PDOP, double &GeoidalSeparation,
-                     unsigned char &nReferenceStations, tN2kGNSStype &ReferenceStationType, uint16_t &ReferenceSationID,
-                     double &AgeOfCorrection
-                     );
-*/
+  if (ParseN2kPGN129029(N2kMsg, SID, DaysSince1970, SecondsSinceMidnight,
+                    latitude, longitude, Altitude,
+                    GNSStype, GNSSmethod,
+                    nSatellites,HDOP, PDOP, GeoidalSeparation,
+                    nReferenceStations, ReferenceStationType, ReferenceSationID,
+                    AgeOfCorrection)) {
 
+    v.position_nmea.latitude  = latitude;
+    v.position_nmea.longitude = longitude;
+    v.position_nmea.set_valid(); // FIXME: also affects SOG/COG
+
+    LOG_DEBUG("N2k got position from 129029 (GNSS Position Data): %f %f\n",
+              latitude, longitude);
+  }
+}
+
+// Position, Rapid Update (Short message, Lat / Lon only)
 void Handle129025(const tN2kMsg &N2kMsg) {
   unsigned char SID;
   double latitude, longitude;
@@ -219,7 +248,9 @@ void Handle129025(const tN2kMsg &N2kMsg) {
     v.position_nmea.latitude  = latitude;
     v.position_nmea.longitude = longitude;
     v.position_nmea.set_valid(); // FIXME: also affects SOG/COG
-    LOG_DEBUG("N2k got position %f %f\n", latitude, longitude);
+
+    LOG_DEBUG("N2k got position from 129025 (rapid update): %f %f\n",
+              latitude, longitude);
   }
 }
 
@@ -280,13 +311,18 @@ typedef struct {
 
 void HandleNMEA2000Msg(const tN2kMsg &N2kMsg) {
   tNMEA2000Handler NMEA2000Handlers[]={
-    {130310L, &Handle130310}, // sea/air temp, pressure
-    {130316L, &Handle130316}, // Temperatures
     {129025L, &Handle129025}, // Position rapid
+    {129029L, &Handle129029}, // GNSS Position
+
     {127250L, &HandleHeading},
     {129026L, &HandleCOGSOG},
+
+    {130310L, &Handle130310}, // Sea / air temps, pressure
+    {130316L, &Handle130316}, // Temperatures
+
     {130306L, &HandleWindSpeed},
     {128267L, &HandleWaterDepth},
+
     {126992L, &SystemTime},
     {0,0}
   };

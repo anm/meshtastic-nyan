@@ -235,6 +235,7 @@ struct NyanVessel {
 
   Sensor<double> water_temperature;
   Sensor<double> water_depth;
+  Sensor<double> water_depth_below_keel;
 
   bool getPosition(Position *p) {
     /* I would like to choose the best position source, but for now will just
