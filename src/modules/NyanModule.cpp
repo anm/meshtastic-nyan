@@ -10,6 +10,8 @@
 #include "main.h"
 #include "MeshService.h"
 
+#include "NodeInfoModule.h"
+
 #include "INA3221.h"
 
 #ifdef USE_AS3935
@@ -273,12 +275,23 @@ void NyanModule::send_report() {
 
   // TODO check protobuf optionalness for what sending when value not available
 
+  // TODO May want to replace with average position, to correspond with
+  // average wind, etc.
+  Position p;
+  if (v.getPosition(&p)) {
+    telemetry.latitude  = p.latitude;
+    telemetry.longitude = p.longitude;
+  }
+
   if (v.GWS.stats.quality() > 0) {
     send = true;
     telemetry.GWS_mean = (uint8_t) v.GWS.stats.mean();
     telemetry.GWS_gust = v.GWS.stats.max();
 
     telemetry.GWD_mean = (uint16_t) v.GWD.stats.mean();
+
+    // Clear statistics collection, ready for the next met reporting period.
+    v.GWS.stats.reset();
 
     LOG_DEBUG("Sending Ground Wind %i kts, %i°T Gust: %i kts\n",
               telemetry.GWS_mean, telemetry.GWD_mean, telemetry.GWS_gust);
@@ -303,6 +316,9 @@ void NyanModule::send_report() {
     p->decoded.want_response = false;
     p->priority = meshtastic_MeshPacket_Priority_RELIABLE;
     service.sendToMesh(p);
+
+    // So people have our name
+    nodeInfoModule->sendOurNodeInfo();
   } else {
     LOG_INFO("No valid data to report\n");
   }
@@ -317,11 +333,10 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
 
   screen->print("Nyan RXed");
 
-  // FIXME: handle null if possible
-
-  LOG_DEBUG("handleReceivedProtobuf() called.");
+  // FIXME: handle null fields if possible
 
   LOG_INFO("Received Nyan telemetry from 0x%0x (ID: 0x%x)\n", mp.from, mp.id);
+  LOG_INFO("Position: %f %f\n", telemetry->latitude, telemetry->longitude);
   LOG_INFO("GWS_mean: %u, GWS_gust: %u, GWD_mean: %u\n",
            telemetry->GWS_mean,
            telemetry->GWS_gust,
@@ -363,7 +378,7 @@ int32_t NyanModule::runOnce() {
   AS3935_check_lightning();
 #endif
 
-  LOG_DEBUG("No of meshtastic tasks: %u\n", task_count());
+  //LOG_DEBUG("No of meshtastic tasks: %u\n", task_count());
 
   return 3000; // period in milliseconds
 }
@@ -393,7 +408,6 @@ void INA3221_setup(void) {
   delay(10);
 #endif
 }
-
 
 void read_INA3221() {
 #ifdef USE_INA3221

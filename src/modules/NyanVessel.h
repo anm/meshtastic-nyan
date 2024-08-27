@@ -79,6 +79,7 @@ T Sensor<T>::get() {
   return val;
 }
 
+/* Provides a running average of a sensor value. */
 template<typename T, size_t length>
 class SensorAveraging : public Sensor<T> {
 public:

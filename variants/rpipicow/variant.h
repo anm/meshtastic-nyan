@@ -23,6 +23,8 @@
 #define INA3221_BUS Wire
 #define INA3221_ADDR 67
 
+#define USE_N2K
+
 // Recommended pins for SerialModule:
 // txd = 8
 // rxd = 9

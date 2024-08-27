@@ -124,6 +124,155 @@ void HandleWaterDepth(const tN2kMsg &N2kMsg) {
   }
 }
 
+void HandleWindSpeed(const tN2kMsg &N2kMsg) {
+  unsigned char SID;
+  double WindSpeed;
+  double WindAngle;
+  tN2kWindReference WindReference;
+
+  LOG_DEBUG("Handling N2K wind speed.\n");
+
+  if (ParseN2kWindSpeed(N2kMsg, SID,
+                        WindSpeed, WindAngle,
+                        WindReference)) {
+
+    /*
+      N2kWind_True_North=0,     ///< Theoretical Wind (ground referenced, referenced to True North; calculated using COG/SOG)
+      N2kWind_Magnetic=1,       ///< Theoretical Wind (ground referenced, referenced to Magnetic North; calculated using COG/SOG)
+      N2kWind_Apparent=2,       ///< Apparent Wind (relative to the vessel centerline)
+      N2kWind_Apprent=2,        ///< Deprecated - We had the typo in older version of the library
+      N2kWind_True_boat=3,      ///< Theoretical (Calculated to Centerline of the vessel, referenced to ground; calculated using COG/SOG)
+      N2kWind_True_water=4,     ///< Theoretical (Calculated to Centerline of the vessel, referenced to water; calculated using Heading/Speed through Water)
+      N2kWind_Error=6,          ///< error occurred
+      N2kWind_Unavailable=7     ///< unavailable
+    */
+
+    WindAngle = RadToDeg(WindAngle);
+    WindSpeed = msToKnots(WindSpeed);
+
+    switch (WindReference) {
+    case N2kWind_Apparent:
+      v.AWS.set(WindSpeed);
+      v.AWA.set(WindAngle);
+    }
+  } else {
+    LOG_ERROR("N2K: ParseN2kWindSpeed failed.\n");
+  }
+}
+
+void HandleHeading(const tN2kMsg &N2kMsg) {
+  unsigned char SID;
+  tN2kHeadingReference ref;
+  double Heading, Deviation, Variation;
+
+  LOG_DEBUG("N2k: Handling heading.\n");
+  if (ParseN2kHeading(N2kMsg, SID, Heading, Deviation, Variation, ref)) {
+    switch (ref) {
+    case N2khr_true:
+      v.HDT.set(RadToDeg(Heading));
+      LOG_DEBUG("N2k got true heading %f\n", RadToDeg(Heading));
+      break;
+
+    case N2khr_magnetic:
+      // FIXME variation / deviation
+      v.HDT.set(RadToDeg(Heading));
+      LOG_DEBUG("N2k got magnetic heading %f\n", RadToDeg(Heading));
+      break;
+    }
+  }
+}
+
+void HandleCOGSOG(const tN2kMsg &N2kMsg) {
+  unsigned char SID;
+  tN2kHeadingReference ref;
+  double COG;
+  double SOG;
+
+  if (ParseN2kCOGSOGRapid(N2kMsg, SID, ref, COG, SOG)) {
+    switch (ref) {
+    case N2khr_true:
+      v.position_nmea.COG = RadToDeg(COG);
+      v.position_nmea.SOG = msToKnots(SOG);
+      LOG_DEBUG("N2k: COG: %f, SOG: %f\n", RadToDeg(COG), msToKnots(SOG));
+    }
+  }
+}
+
+/*
+void Handle129029(const tN2kMsg &N2kMsg) {
+  unsigned char SID;
+
+  bool ParseN2kPGN129029(const tN2kMsg &N2kMsg, unsigned char &SID, uint16_t &DaysSince1970, double &SecondsSinceMidnight,
+                     double &Latitude, double &Longitude, double &Altitude,
+                     tN2kGNSStype &GNSStype, tN2kGNSSmethod &GNSSmethod,
+                     unsigned char &nSatellites, double &HDOP, double &PDOP, double &GeoidalSeparation,
+                     unsigned char &nReferenceStations, tN2kGNSStype &ReferenceStationType, uint16_t &ReferenceSationID,
+                     double &AgeOfCorrection
+                     );
+*/
+
+void Handle129025(const tN2kMsg &N2kMsg) {
+  unsigned char SID;
+  double latitude, longitude;
+
+  if (ParseN2kPositionRapid(N2kMsg, latitude, longitude)) {
+    v.position_nmea.latitude  = latitude;
+    v.position_nmea.longitude = longitude;
+    v.position_nmea.set_valid(); // FIXME: also affects SOG/COG
+    LOG_DEBUG("N2k got position %f %f\n", latitude, longitude);
+  }
+}
+
+/*
+// 130310. Deprecated, but SignalK outputs it.
+inline bool ParseN2kOutsideEnvironmentalParameters(const tN2kMsg &N2kMsg, unsigned char &SID, double &WaterTemperature,
+                     double &OutsideAmbientAirTemperature, double &AtmosphericPressure) {
+*/
+
+// Temperature of something specified by an enum.
+void Handle130316(const tN2kMsg &N2kMsg) {
+  unsigned char SID;
+  unsigned char TempInstance;
+  tN2kTempSource TempSource;
+  double ActualTemperature;
+  double SetTemperature;
+
+  if (ParseN2kTemperatureExt(N2kMsg, SID, TempInstance, TempSource,
+                             ActualTemperature, SetTemperature)) {
+
+    switch (TempSource) {
+    case N2kts_SeaTemperature:
+      v.water_temperature.set(KelvinToC(ActualTemperature));
+      LOG_DEBUG("N2K: water temp %fC\n", KelvinToC(ActualTemperature));
+      break;
+    }
+  }
+}
+
+void Handle130310(const tN2kMsg &N2kMsg) {
+  unsigned char SID;
+  double WaterTemperature;
+  double OutsideAmbientAirTemperature;
+  double AtmosphericPressure;
+
+  if (ParseN2kOutsideEnvironmentalParameters(N2kMsg, SID,
+                                             WaterTemperature,
+                                             OutsideAmbientAirTemperature,
+                                             AtmosphericPressure)) {
+    v.water_temperature.set(KelvinToC(WaterTemperature));
+    LOG_DEBUG("Parsed 130310. Water temp %.2fC\n", KelvinToC(WaterTemperature));
+  }
+}
+
+/*
+Location (129025,129029)
+Speed (128259)
+Navigation Data (129284)
+Leeway (128000)
+Heading (127250)
+COG & SOG (129026)
+*/
+
 typedef struct {
   unsigned long PGN;
   void (*Handler)(const tN2kMsg &N2kMsg);
@@ -131,8 +280,14 @@ typedef struct {
 
 void HandleNMEA2000Msg(const tN2kMsg &N2kMsg) {
   tNMEA2000Handler NMEA2000Handlers[]={
-    {128267L,&HandleWaterDepth},
-    {126992L,&SystemTime},
+    {130310L, &Handle130310}, // sea/air temp, pressure
+    {130316L, &Handle130316}, // Temperatures
+    {129025L, &Handle129025}, // Position rapid
+    {127250L, &HandleHeading},
+    {129026L, &HandleCOGSOG},
+    {130306L, &HandleWindSpeed},
+    {128267L, &HandleWaterDepth},
+    {126992L, &SystemTime},
     {0,0}
   };
 
@@ -206,6 +361,7 @@ void nyan_N2K_setup() {
   // Use hardware chip select
   spi->setHwCs(true);
 #endif
+
 #ifdef RPI_PICO
   // SPI1 is used by Meshtastic for the LoRa module
   auto *spi = &SPI; // or SPI1
