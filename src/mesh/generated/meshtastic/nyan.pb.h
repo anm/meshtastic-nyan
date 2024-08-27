@@ -20,6 +20,8 @@ typedef struct _nyan_telemetry {
     uint32_t air_humidity_relative;
     float water_temperature;
     float water_depth;
+    double latitude;
+    double longitude;
 } nyan_telemetry;
 
 
@@ -28,8 +30,8 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define nyan_telemetry_init_default              {0, 0, 0, 0, 0, 0, 0, 0, 0}
-#define nyan_telemetry_init_zero                 {0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define nyan_telemetry_init_default              {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define nyan_telemetry_init_zero                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define nyan_telemetry_GWS_mean_tag              1
@@ -41,6 +43,8 @@ extern "C" {
 #define nyan_telemetry_air_humidity_relative_tag 16
 #define nyan_telemetry_water_temperature_tag     17
 #define nyan_telemetry_water_depth_tag           18
+#define nyan_telemetry_latitude_tag              20
+#define nyan_telemetry_longitude_tag             21
 
 /* Struct field encoding specification for nanopb */
 #define nyan_telemetry_FIELDLIST(X, a) \
@@ -52,7 +56,9 @@ X(a, STATIC,   SINGULAR, FLOAT,    barometric_pressure_trend,  11) \
 X(a, STATIC,   SINGULAR, FLOAT,    air_temperature,  15) \
 X(a, STATIC,   SINGULAR, UINT32,   air_humidity_relative,  16) \
 X(a, STATIC,   SINGULAR, FLOAT,    water_temperature,  17) \
-X(a, STATIC,   SINGULAR, FLOAT,    water_depth,      18)
+X(a, STATIC,   SINGULAR, FLOAT,    water_depth,      18) \
+X(a, STATIC,   SINGULAR, DOUBLE,   latitude,         20) \
+X(a, STATIC,   SINGULAR, DOUBLE,   longitude,        21)
 #define nyan_telemetry_CALLBACK NULL
 #define nyan_telemetry_DEFAULT NULL
 
@@ -62,7 +68,7 @@ extern const pb_msgdesc_t nyan_telemetry_msg;
 #define nyan_telemetry_fields &nyan_telemetry_msg
 
 /* Maximum encoded size of messages (where known) */
-#define nyan_telemetry_size                      52
+#define nyan_telemetry_size                      72
 
 #ifdef __cplusplus
 } /* extern "C" */
