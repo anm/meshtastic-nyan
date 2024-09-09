@@ -227,7 +227,11 @@ struct NyanVessel {
 
   SensorAveraging<double, 10> HDT;
   SensorAveraging<double, 10> AWS;
+
+  // FIXME
   SensorAveraging<double, 10> AWA;
+
+  //  Wind wind_apparent;
 
   // Derived values
   Sensor<double> GWS;

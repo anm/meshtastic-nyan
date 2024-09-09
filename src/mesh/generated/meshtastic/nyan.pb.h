@@ -11,17 +11,29 @@
 
 /* Struct definitions */
 typedef struct _nyan_telemetry {
+    bool has_GWS_mean;
     uint32_t GWS_mean;
+    bool has_GWS_gust;
     uint32_t GWS_gust;
-    uint32_t GWD_mean; /* uint32 GWD_stddev = 6; */
+    bool has_GWD_mean;
+    uint32_t GWD_mean; /* optional uint32 GWD_stddev = 6; */
+    bool has_barometric_pressure;
     float barometric_pressure;
+    bool has_barometric_pressure_trend;
     float barometric_pressure_trend; /* what if moving? */
+    bool has_air_temperature;
     float air_temperature;
+    bool has_air_humidity_relative;
     uint32_t air_humidity_relative;
+    bool has_water_temperature;
     float water_temperature;
+    bool has_water_depth;
     float water_depth;
+    bool has_water_depth_below_keel;
     float water_depth_below_keel;
+    bool has_latitude;
     double latitude;
+    bool has_longitude;
     double longitude;
 } nyan_telemetry;
 
@@ -31,8 +43,8 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define nyan_telemetry_init_default              {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-#define nyan_telemetry_init_zero                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define nyan_telemetry_init_default              {false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0}
+#define nyan_telemetry_init_zero                 {false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define nyan_telemetry_GWS_mean_tag              1
@@ -50,18 +62,18 @@ extern "C" {
 
 /* Struct field encoding specification for nanopb */
 #define nyan_telemetry_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, UINT32,   GWS_mean,          1) \
-X(a, STATIC,   SINGULAR, UINT32,   GWS_gust,          2) \
-X(a, STATIC,   SINGULAR, UINT32,   GWD_mean,          5) \
-X(a, STATIC,   SINGULAR, FLOAT,    barometric_pressure,  10) \
-X(a, STATIC,   SINGULAR, FLOAT,    barometric_pressure_trend,  11) \
-X(a, STATIC,   SINGULAR, FLOAT,    air_temperature,  15) \
-X(a, STATIC,   SINGULAR, UINT32,   air_humidity_relative,  16) \
-X(a, STATIC,   SINGULAR, FLOAT,    water_temperature,  17) \
-X(a, STATIC,   SINGULAR, FLOAT,    water_depth,      18) \
-X(a, STATIC,   SINGULAR, FLOAT,    water_depth_below_keel,  19) \
-X(a, STATIC,   SINGULAR, DOUBLE,   latitude,         20) \
-X(a, STATIC,   SINGULAR, DOUBLE,   longitude,        21)
+X(a, STATIC,   OPTIONAL, UINT32,   GWS_mean,          1) \
+X(a, STATIC,   OPTIONAL, UINT32,   GWS_gust,          2) \
+X(a, STATIC,   OPTIONAL, UINT32,   GWD_mean,          5) \
+X(a, STATIC,   OPTIONAL, FLOAT,    barometric_pressure,  10) \
+X(a, STATIC,   OPTIONAL, FLOAT,    barometric_pressure_trend,  11) \
+X(a, STATIC,   OPTIONAL, FLOAT,    air_temperature,  15) \
+X(a, STATIC,   OPTIONAL, UINT32,   air_humidity_relative,  16) \
+X(a, STATIC,   OPTIONAL, FLOAT,    water_temperature,  17) \
+X(a, STATIC,   OPTIONAL, FLOAT,    water_depth,      18) \
+X(a, STATIC,   OPTIONAL, FLOAT,    water_depth_below_keel,  19) \
+X(a, STATIC,   OPTIONAL, DOUBLE,   latitude,         20) \
+X(a, STATIC,   OPTIONAL, DOUBLE,   longitude,        21)
 #define nyan_telemetry_CALLBACK NULL
 #define nyan_telemetry_DEFAULT NULL
 

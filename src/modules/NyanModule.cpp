@@ -12,6 +12,9 @@
 
 #include "NodeInfoModule.h"
 
+#include "mqtt/JSON.h"
+#include "mqtt/JSONValue.h"
+
 #include "INA3221.h"
 
 #ifdef USE_AS3935
@@ -257,6 +260,12 @@ void signalk_test(NyanVessel v) {
       ",";
   }
 
+  if (v.water_depth_below_keel.valid()) {
+    s +=
+      R"({"path": "environment.depth.belowKeel", "value": )" + String(v.water_depth.get()) + "}"
+      ",";
+  }
+
   s +=
     // This is mostly here to have a guaranteed item at the end, that doesn't
     // have a comma after it, because JSON :(
@@ -265,6 +274,33 @@ void signalk_test(NyanVessel v) {
 
   LOG_INFO(s.c_str());
   tcp.print(s);
+}
+
+/*
+ * Connect to SignalK by tcp and send the provided JSON string.
+ */
+void signalk_send(const char *json) {
+  static WiFiClient tcp;
+
+  const char *host = "nyan-host-0.river.cat";
+  const uint16_t port = 8375;
+
+  if (!WiFi.isConnected()) {
+    LOG_INFO("WiFi not connected\n");
+    return;
+  }
+
+  if (! tcp.connected()) {
+    if (tcp.connect(host, port)) {
+      LOG_INFO("SignalK TCP connected\n");
+    } else {
+      LOG_WARN("Connecting SignalK TCP failed.\n");
+      return;
+    }
+  }
+
+  LOG_INFO("Sending JSON to SignalK.");
+  tcp.print(json);
 }
 
 void NyanModule::send_report() {
@@ -342,15 +378,53 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
 
   // FIXME: handle null fields if possible
 
-  LOG_INFO("Received Nyan telemetry from 0x%0x (ID: 0x%x)\n", mp.from, mp.id);
-  LOG_INFO("Position: %f %f\n", telemetry->latitude, telemetry->longitude);
-  LOG_INFO("GWS_mean: %u, GWS_gust: %u, GWD_mean: %u\n",
-           telemetry->GWS_mean,
-           telemetry->GWS_gust,
-           telemetry->GWD_mean);
+  LOG_INFO("Received Nyan telemetry from node 0x%0x (Packet ID: 0x%x)\n", mp.from, mp.id);
+
+  JSONArray values; // SignalK values object
+
+  if (telemetry->has_latitude && telemetry->has_longitude) {
+    LOG_INFO("Position: %f %f\n", telemetry->latitude, telemetry->longitude);
+
+    LOG_INFO("GWS_mean: %u, GWS_gust: %u, GWD_mean: %u\n",
+             telemetry->GWS_mean,
+             telemetry->GWS_gust,
+             telemetry->GWD_mean);
+
+    JSONObject position;
+    position["latitude"]  = new JSONValue(telemetry->latitude);
+    position["longitude"] = new JSONValue(telemetry->longitude);
+
+    JSONObject pos_value;
+    pos_value["path"] = new JSONValue("navigation.position");
+    pos_value["value"] = new JSONValue(position);
+
+    values.push_back(new JSONValue(pos_value));
+  }
+
+  String urn = "vessels.urn:mrn:nyan:" + String(mp.from);
+  JSONObject SignalK;
+  SignalK["context"] = new JSONValue(urn.c_str());
+
+  JSONObject source;
+  source["label"] = new JSONValue("nyan");
+  source["type"] = new JSONValue("nyan");
+
+  JSONObject update;
+  update["source"] = new JSONValue(source);
+  update["values"] = new JSONValue(values);
+
+  JSONArray updates;
+  updates.push_back(new JSONValue(update));
+  SignalK["updates"] = new JSONValue(updates);
 
   LOG_INFO("Water temperature %f°C\n", telemetry->water_temperature);
   LOG_INFO("Water depth %fm\n", telemetry->water_depth);
+  LOG_INFO("Depth below keel %fm\n", telemetry->water_depth_below_keel);
+
+  JSONValue *JSONvalue = new JSONValue(SignalK);
+  LOG_INFO(JSONvalue->Stringify().c_str());
+  signalk_send(JSONvalue->Stringify().c_str());
+  delete JSONvalue;
 
   // Pass to other modules too. Maybe needed for the router to rebroadcast it?
   return false;
