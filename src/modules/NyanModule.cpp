@@ -479,13 +479,15 @@ int32_t NyanModule::runOnce() {
 }
 
 #ifdef USE_INA3221
-INA3221 ina3221 = INA3221(&INA3221_BUS, (ina3221_addr_t) INA3221_ADDR);
-//INA3221 ina3221 = INA3221((ina3221_addr_t) INA3221_ADDR);
+//INA3221 ina3221 = INA3221(&INA3221_BUS, (ina3221_addr_t) INA3221_ADDR);
+INA3221 ina3221 = INA3221((ina3221_addr_t) INA3221_ADDR);
 #endif
 
 void INA3221_setup(void) {
 #ifdef USE_INA3221
   LOG_INFO("INA3221_setup\n");
+
+  ina3221.begin(&INA3221_BUS);
 
   ina3221.setShuntRes(50, 100, 100); // In milliOhms
   ina3221.setFilterRes(10, 10, 10); // In Ohms
