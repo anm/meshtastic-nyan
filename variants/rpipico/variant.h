@@ -4,6 +4,8 @@
 
 #define USE_SH1106 1
 
+#define HAS_SCREEN 0
+
 // default I2C pins:
 // SDA = 4
 // SCL = 5

@@ -12,8 +12,8 @@
 
 #include "NodeInfoModule.h"
 
-#include "mqtt/JSON.h"
-#include "mqtt/JSONValue.h"
+#include "serialization/JSON.h"
+#include "serialization/JSONValue.h"
 
 #include "INA3221.h"
 
@@ -358,7 +358,7 @@ void NyanModule::send_report() {
     meshtastic_MeshPacket *p = allocDataProtobuf(telemetry);
     p->decoded.want_response = false;
     p->priority = meshtastic_MeshPacket_Priority_RELIABLE;
-    service.sendToMesh(p);
+    service->sendToMesh(p);
 
     // So people have our name
     nodeInfoModule->sendOurNodeInfo();

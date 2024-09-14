@@ -118,7 +118,7 @@ void HandleWaterDepth(const tN2kMsg &N2kMsg) {
       LOG_DEBUG("N2K: Set water depth to %f from DPT message\n", dbs);
     } else {
       // Don't care about depth below keel. Need depth below surface.
-      dbk = dbt + offset
+      dbk = dbt + offset;
       v.water_depth_below_keel.set(dbk);
       LOG_DEBUG("N2K: Got DPT message with negative offset (depth below keel).\n");
       return;
