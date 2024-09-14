@@ -383,9 +383,9 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
   JSONArray values; // SignalK values object
 
   if (telemetry->has_latitude && telemetry->has_longitude) {
-    LOG_INFO("Position: %f %f\n", telemetry->latitude, telemetry->longitude);
+    LOG_INFO("RXed Position: %f %f\n", telemetry->latitude, telemetry->longitude);
 
-    LOG_INFO("GWS_mean: %u, GWS_gust: %u, GWD_mean: %u\n",
+    LOG_INFO("RXed GWS_mean: %u, GWS_gust: %u, GWD_mean: %u\n",
              telemetry->GWS_mean,
              telemetry->GWS_gust,
              telemetry->GWD_mean);
@@ -399,6 +399,16 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
     pos_value["value"] = new JSONValue(position);
 
     values.push_back(new JSONValue(pos_value));
+  }
+
+  if (telemetry->has_GWS_mean) {
+    LOG_INFO("RXed GWS_mean: %f\n", telemetry->GWS_mean);
+
+    JSONObject GWS_value;
+    GWS_value["path"] = new JSONValue("environment.wind.speedOverGround");
+    GWS_value["value"] = new JSONValue(telemetry->GWS_mean);
+
+    values.push_back(new JSONValue(GWS_value));
   }
 
   String urn = "vessels.urn:mrn:nyan:" + String(mp.from);
@@ -417,12 +427,16 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
   updates.push_back(new JSONValue(update));
   SignalK["updates"] = new JSONValue(updates);
 
+  /*
   LOG_INFO("Water temperature %f°C\n", telemetry->water_temperature);
   LOG_INFO("Water depth %fm\n", telemetry->water_depth);
   LOG_INFO("Depth below keel %fm\n", telemetry->water_depth_below_keel);
+  */
 
   JSONValue *JSONvalue = new JSONValue(SignalK);
-  LOG_INFO(JSONvalue->Stringify().c_str());
+  LOG_DEBUG("JSON string built from received Nyan message: ");
+  LOG_DEBUG(JSONvalue->Stringify().c_str());
+
   signalk_send(JSONvalue->Stringify().c_str());
   delete JSONvalue;
 
@@ -537,6 +551,11 @@ void NyanModule::report_sender_task(void *params) {
             uxTaskGetStackHighWaterMark(NULL));
 
   while(true) {
+
+    // FIXME: build the cli with ability to set this
+    config.nyan.test_send = true;
+    config.nyan.test_reporting_period = 60000;
+
     if (config.nyan.test_send) {
       if (config.nyan.test_reporting_period < 10000) {
         config.nyan.test_reporting_period = 10000;
