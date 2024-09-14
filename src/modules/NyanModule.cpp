@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include "os_status.h"
 #include "mesh/NodeDB.h"
+
 #include "gps/RTC.h"
 
 #include "configuration.h"
@@ -312,14 +313,15 @@ void NyanModule::send_report() {
   // We have data to send
   bool send = false;
 
-  // TODO check protobuf optionalness for what sending when value not available
-
-  // TODO May want to replace with average position, to correspond with
+   // TODO May want to replace with average position, to correspond with
   // average wind, etc.
   Position p;
   if (v.getPosition(&p)) {
+    send = true;
+
     telemetry.latitude = p.latitude;
     telemetry.has_latitude = true;
+
     telemetry.longitude = p.longitude;
     telemetry.has_longitude = true;
   }
@@ -364,15 +366,15 @@ void NyanModule::send_report() {
   }
 
   if (send) {
-    LOG_INFO("Sending Nyan telemetry\n");
+    // So people have our name
+    nodeInfoModule->sendOurNodeInfo();
 
+    LOG_INFO("Sending Nyan telemetry\n");
     meshtastic_MeshPacket *p = allocDataProtobuf(telemetry);
     p->decoded.want_response = false;
     p->priority = meshtastic_MeshPacket_Priority_RELIABLE;
     service->sendToMesh(p);
 
-    // So people have our name
-    nodeInfoModule->sendOurNodeInfo();
   } else {
     LOG_INFO("No valid data to report\n");
   }
@@ -380,26 +382,30 @@ void NyanModule::send_report() {
 
 bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
                                         nyan_telemetry *telemetry) {
+  JSONArray values; // SignalK values object
+
   if (telemetry == NULL) {
     LOG_WARN("handleReceivedProtobuf() got null protobuf decode\n");
     return false;
   }
 
   screen->print("Nyan RXed");
-
-  // FIXME: handle null fields if possible
-
   LOG_INFO("Received Nyan telemetry from node 0x%0x (Packet ID: 0x%x)\n", mp.from, mp.id);
 
-  JSONArray values; // SignalK values object
+  meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(mp.from);
+  if (node->has_user) {
+    LOG_DEBUG("Sending station name from NodeDB; name: %s\n",
+              node->user.long_name);
+
+    JSONObject station_name;
+    station_name["path"] = new JSONValue("name");
+    station_name["value"] = new JSONValue(node->user.long_name);
+
+    values.push_back(new JSONValue(station_name));
+  }
 
   if (telemetry->has_latitude && telemetry->has_longitude) {
     LOG_INFO("RXed Position: %f %f\n", telemetry->latitude, telemetry->longitude);
-
-    LOG_INFO("RXed GWS_mean: %u, GWS_gust: %u, GWD_mean: %u\n",
-             telemetry->GWS_mean,
-             telemetry->GWS_gust,
-             telemetry->GWD_mean);
 
     JSONObject position;
     position["latitude"]  = new JSONValue(telemetry->latitude);
@@ -559,7 +565,7 @@ void NyanModule::sample_onboard_sensors(void) {
 void set_test_sensor_data(void) {
   // Add fake data
   v.position_nmea.latitude = 56.020;
-  v.position_nmea.latitude = -3.197;
+  v.position_nmea.longitude = -3.197;
   v.position_nmea.COG = 88;
   v.position_nmea.SOG = 5;
   v.position_nmea.set_valid();
@@ -643,7 +649,7 @@ NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan
 #ifdef USE_TEST_DATA
   // FIXME: build the cli with ability to set this
   config.nyan.test_send = true;
-  config.nyan.test_reporting_period = 60000;
+  config.nyan.test_reporting_period = 20000;
 #endif
 
   auto create_return_val =
