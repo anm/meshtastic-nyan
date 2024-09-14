@@ -48,7 +48,7 @@ NyanVessel v;
 */
 
 /* Weather station reporting period in milliseconds. */
-constexpr uint32_t met_reporting_period = 600000;
+uint32_t met_reporting_period = 600000;
 
 /* Import NMEA0183 data from a tcp server.
    If not connected, connect.
@@ -167,7 +167,6 @@ void sample_NMEA_sensors(NyanVessel& v) {
   Wind::derive_ground_wind(v, GWS, GWD);
   v.GWS.stats.sample(GWS);
   v.GWD.stats.sample(GWD);
-
 }
 
 void signalk_test(NyanVessel v) {
@@ -547,12 +546,37 @@ void NyanModule::sample_onboard_sensors(void) {
   read_INA3221();
 }
 
+void set_test_sensor_data(void) {
+  // Add fake data
+  v.position_nmea.latitude = 56.020;
+  v.position_nmea.latitude = -3.197;
+  v.position_nmea.COG = 88;
+  v.position_nmea.SOG = 5;
+  v.position_nmea.set_valid();
+
+  v.AWS.set(15);
+  v.AWA.set(160);
+  v.HDT.set(90);
+  v.water_temperature.set(15);
+}
+
 /* A FreeRTOS task to read / filter / store sensor data. */
 void NyanModule::sensor_sampler_task(void *params) {
   while(true) {
     LOG_DEBUG("NYAN Sampling sensors\n");
     LOG_DEBUG("NYAN sampler stack high water mark: %u\n",
               uxTaskGetStackHighWaterMark(NULL));
+
+    // Inject mock data if in test mode
+    if (config.nyan.test_send) {
+      if (config.nyan.test_reporting_period < 10000) {
+        config.nyan.test_reporting_period = 10000;
+      }
+      met_reporting_period = config.nyan.test_reporting_period;
+
+      set_test_sensor_data();
+    }
+
     sample_NMEA_sensors(v);
     //    sample_onboard_sensors();
     delay(5000);
@@ -566,37 +590,10 @@ void NyanModule::report_sender_task(void *params) {
             uxTaskGetStackHighWaterMark(NULL));
 
   while(true) {
-
-    // FIXME: build the cli with ability to set this
-    config.nyan.test_send = true;
-    config.nyan.test_reporting_period = 60000;
-
-    if (config.nyan.test_send) {
-      if (config.nyan.test_reporting_period < 10000) {
-        config.nyan.test_reporting_period = 10000;
-      }
-      delay(config.nyan.test_reporting_period);
-
-      // Add fake data
-      v.position_nmea.latitude = 56.020;
-      v.position_nmea.latitude = -3.197;
-      v.position_nmea.COG = 88;
-      v.position_nmea.SOG = 5;
-      v.position_nmea.set_valid();
-
-      v.AWS.set(15);
-      v.AWA.set(160);
-      v.HDT.set(90);
-      v.water_temperature.set(15);
-
-      nm->send_report();
-    } else {
-      delay(met_reporting_period);
-      nm->send_report();
-    }
+    delay(met_reporting_period);
+    nm->send_report();
   }
 }
-
 void debug_memory(void) {
 #ifdef ESP32
   LOG_DEBUG("ESP.getHeapSize(): %u\n", ESP.getHeapSize());
@@ -631,6 +628,12 @@ NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan
 
 #ifdef USE_NMEA_SERIAL
   NMEA_serial_setup();
+#endif
+
+#ifdef USE_TEST_DATA
+  // FIXME: build the cli with ability to set this
+  config.nyan.test_send = true;
+  config.nyan.test_reporting_period = 60000;
 #endif
 
   auto create_return_val =

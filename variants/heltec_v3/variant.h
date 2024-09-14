@@ -1,3 +1,5 @@
+#define USE_TEST_DATA
+
 // Which I2C bus: Wire, Wire1, ...
 #define INA3221_BUS Wire1
 
