@@ -28,6 +28,9 @@
 #include "NyanN2K.h"
 #endif
 
+// For unit conversions
+#include "N2kMessages.h"
+
 #include "NyanVessel.h"
 #include "wind.h"
 
@@ -409,6 +412,16 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
     GWS_value["value"] = new JSONValue(telemetry->GWS_mean);
 
     values.push_back(new JSONValue(GWS_value));
+  }
+
+  if (telemetry->has_water_temperature) {
+    LOG_INFO("RXed water_temperature: %fC\n", telemetry->water_temperature);
+
+    JSONObject water_temperature_value;
+    water_temperature_value["path"]  = new JSONValue("environment.water.temperature");
+    water_temperature_value["value"] = new JSONValue(CToKelvin(telemetry->water_temperature));
+
+    values.push_back(new JSONValue(water_temperature_value));
   }
 
   String urn = "vessels.urn:mrn:nyan:" + String(mp.from);
