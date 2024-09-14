@@ -288,13 +288,13 @@ void signalk_send(const char *json) {
   const uint16_t port = 8375;
 
   if (!WiFi.isConnected()) {
-    LOG_INFO("WiFi not connected\n");
+    LOG_WARN("WiFi not connected for SignalK send.\n");
     return;
   }
 
   if (! tcp.connected()) {
     if (tcp.connect(host, port)) {
-      LOG_INFO("SignalK TCP connected\n");
+      LOG_INFO("SignalK TCP connected.\n");
     } else {
       LOG_WARN("Connecting SignalK TCP failed.\n");
       return;
@@ -318,16 +318,22 @@ void NyanModule::send_report() {
   // average wind, etc.
   Position p;
   if (v.getPosition(&p)) {
-    telemetry.latitude  = p.latitude;
+    telemetry.latitude = p.latitude;
+    telemetry.has_latitude = true;
     telemetry.longitude = p.longitude;
+    telemetry.has_longitude = true;
   }
 
   if (v.GWS.stats.quality() > 0) {
     send = true;
     telemetry.GWS_mean = (uint8_t) v.GWS.stats.mean();
+    telemetry.has_GWS_mean = true;
+
     telemetry.GWS_gust = v.GWS.stats.max();
+    telemetry.has_GWS_gust = true;
 
     telemetry.GWD_mean = (uint16_t) v.GWD.stats.mean();
+    telemetry.has_GWD_mean = true;
 
     // Clear statistics collection, ready for the next met reporting period.
     v.GWS.stats.reset();
@@ -339,18 +345,21 @@ void NyanModule::send_report() {
   if (v.water_temperature.valid()) {
     send = true;
     telemetry.water_temperature = v.water_temperature.get();
+    telemetry.has_water_temperature = true;
     LOG_DEBUG("Water temperature %f°C\n", telemetry.water_temperature);
   }
 
   if (v.water_depth.valid()) {
     send = true;
     telemetry.water_depth = v.water_depth.get();
+    telemetry.has_water_depth = true;
     LOG_DEBUG("Sending water depth %fm\n", telemetry.water_depth);
   }
 
   if (v.water_depth_below_keel.valid()) {
     send = true;
-    telemetry.water_depth = v.water_depth_below_keel.get();
+    telemetry.water_depth_below_keel = v.water_depth_below_keel.get();
+    telemetry.has_water_depth_below_keel = true;
     LOG_DEBUG("Sending water depth below keel%fm\n", telemetry.water_depth_below_keel);
   }
 
@@ -446,11 +455,12 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
   */
 
   JSONValue *JSONvalue = new JSONValue(SignalK);
-  LOG_DEBUG("JSON string built from received Nyan message: ");
-  LOG_DEBUG(JSONvalue->Stringify().c_str());
-
-  signalk_send(JSONvalue->Stringify().c_str());
+  string json_s = JSONvalue->Stringify() + "\n";
   delete JSONvalue;
+
+  signalk_send(json_s.c_str());
+  LOG_DEBUG("JSON string built from received Nyan message: ");
+  LOG_DEBUG(json_s.c_str());
 
   // Pass to other modules too. Maybe needed for the router to rebroadcast it?
   return false;
