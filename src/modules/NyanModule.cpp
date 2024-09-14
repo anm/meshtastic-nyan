@@ -424,8 +424,14 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
     JSONObject GWS_value;
     GWS_value["path"] = new JSONValue("environment.wind.speedOverGround");
     GWS_value["value"] = new JSONValue(KnotsToms(telemetry->GWS_mean));
-
     values.push_back(new JSONValue(GWS_value));
+
+    // Also send speedTrue. This is wrong, but SignalK is generally wrong
+    // about a lot of stuff so I may need to be wrong too.
+    JSONObject GWS_value2;
+    GWS_value2["path"] = new JSONValue("environment.wind.speedTrue");
+    GWS_value2["value"] = new JSONValue(KnotsToms(telemetry->GWS_mean));
+    values.push_back(new JSONValue(GWS_value2));
   }
 
   if (telemetry->has_GWD_mean) {
