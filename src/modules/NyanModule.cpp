@@ -423,9 +423,20 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
 
     JSONObject GWS_value;
     GWS_value["path"] = new JSONValue("environment.wind.speedOverGround");
-    GWS_value["value"] = new JSONValue(telemetry->GWS_mean);
+    GWS_value["value"] = new JSONValue(KnotsToms(telemetry->GWS_mean));
 
     values.push_back(new JSONValue(GWS_value));
+  }
+
+  if (telemetry->has_GWD_mean) {
+    LOG_INFO("RXed GWD_mean: %u\n", telemetry->GWD_mean);
+
+    JSONObject GWD_value;
+    // SignalK seems to lack a ground wind direction value, even though it has ground wind speed!!!
+    GWD_value["path"] = new JSONValue("environment.wind.directionTrue");
+    GWD_value["value"] = new JSONValue(DegToRad(telemetry->GWD_mean));
+
+    values.push_back(new JSONValue(GWD_value));
   }
 
   if (telemetry->has_water_temperature) {
