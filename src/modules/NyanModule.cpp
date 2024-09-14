@@ -537,8 +537,29 @@ void NyanModule::report_sender_task(void *params) {
             uxTaskGetStackHighWaterMark(NULL));
 
   while(true) {
-    delay(met_reporting_period);
-    nm->send_report();
+    if (config.nyan.test_send) {
+      if (config.nyan.test_reporting_period < 10000) {
+        config.nyan.test_reporting_period = 10000;
+      }
+      delay(config.nyan.test_reporting_period);
+
+      // Add fake data
+      v.position_nmea.latitude = 56.020;
+      v.position_nmea.latitude = -3.197;
+      v.position_nmea.COG = 88;
+      v.position_nmea.SOG = 5;
+      v.position_nmea.set_valid();
+
+      v.AWS.set(15);
+      v.AWA.set(160);
+      v.HDT.set(90);
+      v.water_temperature.set(15);
+
+      nm->send_report();
+    } else {
+      delay(met_reporting_period);
+      nm->send_report();
+    }
   }
 }
 
