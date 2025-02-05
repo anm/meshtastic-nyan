@@ -1,18 +1,71 @@
-# Meshtastic Firmware
+# Nyan - The Nearby Yacht Area Network
 
-![GitHub release downloads](https://img.shields.io/github/downloads/meshtastic/firmware/total)
-[![CI](https://img.shields.io/github/actions/workflow/status/meshtastic/firmware/main_matrix.yml?branch=master&label=actions&logo=github&color=yellow)](https://github.com/meshtastic/firmware/actions/workflows/ci.yml)
-[![CLA assistant](https://cla-assistant.io/readme/badge/meshtastic/firmware)](https://cla-assistant.io/meshtastic/firmware)
-[![Fiscal Contributors](https://opencollective.com/meshtastic/tiers/badge.svg?label=Fiscal%20Contributors&color=deeppink)](https://opencollective.com/meshtastic/)
-[![Vercel](https://img.shields.io/static/v1?label=Powered%20by&message=Vercel&style=flat&logo=vercel&color=000000)](https://vercel.com?utm_source=meshtastic&utm_campaign=oss)
+This repo contains a modification of Meshtastic designed for use on yachts,
+boats, and shore stations. It forms a mesh network with LoRa radios which can
+be used to exchange text messages and boat telemetry, particularly weather
+observations.
 
-## Overview
+More information about the Nyan project on the [wiki](https://mews.river.cat/start).
 
-This repository contains the device firmware for the Meshtastic project.
+## Modifications made on Meshtastic:
 
-- **[Building Instructions](https://meshtastic.org/docs/development/firmware/build)**
-- **[Flashing Instructions](https://meshtastic.org/docs/getting-started/flashing-firmware/)**
+### Added network interfaces:
 
-## Stats
+Data input from:
+- NMEA2000 / CAN bus
+- NMEA0183 (UART / serial lines)
+- NMEA0183 over TCP
 
-![Alt](https://repobeats.axiom.co/api/embed/a92f097d9197ae853e780ec53d7d126e545629ab.svg "Repobeats analytics image")
+Data out to:
+- SignalK over TCP
+
+### Weather Reports
+
+The software collates data from connected NMEA networks and compiles
+meteorological reports which are sent over LoRa every 10 minutes.
+
+### Sensors
+
+A sensor class is added, which is used to store values from NMEA networks or
+any other source.
+
+Support is added for the AS3935 lightning detector IC.
+
+### Telemetry
+
+The Meshtastic Telemetry module is removed. It conflicted with my use of the
+INA3221, and Nyan adds its own sensor framework and message types.
+
+## Status
+
+The code is functional, but of experimental hack quality, aka. "research
+grade".
+
+It has been tested connected to a boat's NMEA2000 network.
+
+## TODOs / Caveats
+
+- Configuring network interfaces is hardcoded. I started to add configuration
+  parameters to the Meshtastic system, but would also need to modify the
+  Meshtastic clients / UI to add these.
+
+- Do wind averaging properly (it is currently an expeditious hack that can give
+  wrong results).
+
+- Add output over NMEA2000. Possibly by making fake AIS targets for what are
+  Nyan sources. Possibly sending protobufs over a custom PGN.
+
+- Lightning sensor needs reporting added.
+
+- SignalK requires you to disable its "security" feature to accept data over
+  TCP. I would recommend you disable this anyway, for reliability reasons, and
+  secure access to your boat's network on a more appropriate level.
+
+## Hardware
+
+I have developed this software on Heltec ESP32 boards and Raspberry Pi Picos,
+and there are pin configurations for some of these boards added to the
+repo. The Pico is a good choice if you want an easy way to connect to
+NMEA2000, because you can use Waveshare CAN and LoRa boards with it (these are
+a bit expensive though). The Heltecs you need to wire up a CAN interface
+manually.
