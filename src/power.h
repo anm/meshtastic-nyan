@@ -50,11 +50,6 @@ extern INA260Sensor ina260Sensor;
 extern INA3221Sensor ina3221Sensor;
 #endif
 
-#if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && !defined(ARCH_PORTDUINO) && !defined(ARCH_STM32WL)
-#include "modules/Telemetry/Sensor/MAX17048Sensor.h"
-extern MAX17048Sensor max17048Sensor;
-#endif
-
 #if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && HAS_RAKPROT && !defined(ARCH_PORTDUINO)
 #include "modules/Telemetry/Sensor/RAK9154Sensor.h"
 extern RAK9154Sensor rak9154Sensor;

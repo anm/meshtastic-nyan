@@ -600,6 +600,7 @@ void NyanModule::sensor_sampler_task(void *params) {
     LOG_DEBUG("NYAN sampler stack high water mark: %u\n",
               uxTaskGetStackHighWaterMark(NULL));
 
+    /*
     // Inject mock data if in test mode
     if (config.nyan.test_send) {
       if (config.nyan.test_reporting_period < 10000) {
@@ -609,6 +610,7 @@ void NyanModule::sensor_sampler_task(void *params) {
 
       set_test_sensor_data();
     }
+    */
 
     sample_NMEA_sensors(v);
     //    sample_onboard_sensors();

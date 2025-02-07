@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 constexpr double pi = 3.141592653589793;
 constexpr double tau = pi * 2.0;
 constexpr double deg_to_rad = tau / 360.0;
