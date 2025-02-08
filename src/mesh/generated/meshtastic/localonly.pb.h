@@ -41,6 +41,8 @@ typedef struct _meshtastic_LocalConfig {
     /* The part of the config that is specific to Security settings */
     bool has_security;
     meshtastic_Config_SecurityConfig security;
+    bool has_nyan;
+    meshtastic_Config_NyanConfig nyan;
 } meshtastic_LocalConfig;
 
 typedef struct _meshtastic_LocalModuleConfig {
@@ -95,9 +97,9 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define meshtastic_LocalConfig_init_default      {false, meshtastic_Config_DeviceConfig_init_default, false, meshtastic_Config_PositionConfig_init_default, false, meshtastic_Config_PowerConfig_init_default, false, meshtastic_Config_NetworkConfig_init_default, false, meshtastic_Config_DisplayConfig_init_default, false, meshtastic_Config_LoRaConfig_init_default, false, meshtastic_Config_BluetoothConfig_init_default, 0, false, meshtastic_Config_SecurityConfig_init_default}
+#define meshtastic_LocalConfig_init_default      {false, meshtastic_Config_DeviceConfig_init_default, false, meshtastic_Config_PositionConfig_init_default, false, meshtastic_Config_PowerConfig_init_default, false, meshtastic_Config_NetworkConfig_init_default, false, meshtastic_Config_DisplayConfig_init_default, false, meshtastic_Config_LoRaConfig_init_default, false, meshtastic_Config_BluetoothConfig_init_default, 0, false, meshtastic_Config_SecurityConfig_init_default, false, meshtastic_Config_NyanConfig_init_default}
 #define meshtastic_LocalModuleConfig_init_default {false, meshtastic_ModuleConfig_MQTTConfig_init_default, false, meshtastic_ModuleConfig_SerialConfig_init_default, false, meshtastic_ModuleConfig_ExternalNotificationConfig_init_default, false, meshtastic_ModuleConfig_StoreForwardConfig_init_default, false, meshtastic_ModuleConfig_RangeTestConfig_init_default, false, meshtastic_ModuleConfig_TelemetryConfig_init_default, false, meshtastic_ModuleConfig_CannedMessageConfig_init_default, 0, false, meshtastic_ModuleConfig_AudioConfig_init_default, false, meshtastic_ModuleConfig_RemoteHardwareConfig_init_default, false, meshtastic_ModuleConfig_NeighborInfoConfig_init_default, false, meshtastic_ModuleConfig_AmbientLightingConfig_init_default, false, meshtastic_ModuleConfig_DetectionSensorConfig_init_default, false, meshtastic_ModuleConfig_PaxcounterConfig_init_default}
-#define meshtastic_LocalConfig_init_zero         {false, meshtastic_Config_DeviceConfig_init_zero, false, meshtastic_Config_PositionConfig_init_zero, false, meshtastic_Config_PowerConfig_init_zero, false, meshtastic_Config_NetworkConfig_init_zero, false, meshtastic_Config_DisplayConfig_init_zero, false, meshtastic_Config_LoRaConfig_init_zero, false, meshtastic_Config_BluetoothConfig_init_zero, 0, false, meshtastic_Config_SecurityConfig_init_zero}
+#define meshtastic_LocalConfig_init_zero         {false, meshtastic_Config_DeviceConfig_init_zero, false, meshtastic_Config_PositionConfig_init_zero, false, meshtastic_Config_PowerConfig_init_zero, false, meshtastic_Config_NetworkConfig_init_zero, false, meshtastic_Config_DisplayConfig_init_zero, false, meshtastic_Config_LoRaConfig_init_zero, false, meshtastic_Config_BluetoothConfig_init_zero, 0, false, meshtastic_Config_SecurityConfig_init_zero, false, meshtastic_Config_NyanConfig_init_zero}
 #define meshtastic_LocalModuleConfig_init_zero   {false, meshtastic_ModuleConfig_MQTTConfig_init_zero, false, meshtastic_ModuleConfig_SerialConfig_init_zero, false, meshtastic_ModuleConfig_ExternalNotificationConfig_init_zero, false, meshtastic_ModuleConfig_StoreForwardConfig_init_zero, false, meshtastic_ModuleConfig_RangeTestConfig_init_zero, false, meshtastic_ModuleConfig_TelemetryConfig_init_zero, false, meshtastic_ModuleConfig_CannedMessageConfig_init_zero, 0, false, meshtastic_ModuleConfig_AudioConfig_init_zero, false, meshtastic_ModuleConfig_RemoteHardwareConfig_init_zero, false, meshtastic_ModuleConfig_NeighborInfoConfig_init_zero, false, meshtastic_ModuleConfig_AmbientLightingConfig_init_zero, false, meshtastic_ModuleConfig_DetectionSensorConfig_init_zero, false, meshtastic_ModuleConfig_PaxcounterConfig_init_zero}
 
 /* Field tags (for use in manual encoding/decoding) */
@@ -110,6 +112,7 @@ extern "C" {
 #define meshtastic_LocalConfig_bluetooth_tag     7
 #define meshtastic_LocalConfig_version_tag       8
 #define meshtastic_LocalConfig_security_tag      9
+#define meshtastic_LocalConfig_nyan_tag          42
 #define meshtastic_LocalModuleConfig_mqtt_tag    1
 #define meshtastic_LocalModuleConfig_serial_tag  2
 #define meshtastic_LocalModuleConfig_external_notification_tag 3
@@ -135,7 +138,8 @@ X(a, STATIC,   OPTIONAL, MESSAGE,  display,           5) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  lora,              6) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  bluetooth,         7) \
 X(a, STATIC,   SINGULAR, UINT32,   version,           8) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  security,          9)
+X(a, STATIC,   OPTIONAL, MESSAGE,  security,          9) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  nyan,             42)
 #define meshtastic_LocalConfig_CALLBACK NULL
 #define meshtastic_LocalConfig_DEFAULT NULL
 #define meshtastic_LocalConfig_device_MSGTYPE meshtastic_Config_DeviceConfig
@@ -146,6 +150,7 @@ X(a, STATIC,   OPTIONAL, MESSAGE,  security,          9)
 #define meshtastic_LocalConfig_lora_MSGTYPE meshtastic_Config_LoRaConfig
 #define meshtastic_LocalConfig_bluetooth_MSGTYPE meshtastic_Config_BluetoothConfig
 #define meshtastic_LocalConfig_security_MSGTYPE meshtastic_Config_SecurityConfig
+#define meshtastic_LocalConfig_nyan_MSGTYPE meshtastic_Config_NyanConfig
 
 #define meshtastic_LocalModuleConfig_FIELDLIST(X, a) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  mqtt,              1) \
@@ -187,7 +192,7 @@ extern const pb_msgdesc_t meshtastic_LocalModuleConfig_msg;
 
 /* Maximum encoded size of messages (where known) */
 #define MESHTASTIC_MESHTASTIC_LOCALONLY_PB_H_MAX_SIZE meshtastic_LocalConfig_size
-#define meshtastic_LocalConfig_size              743
+#define meshtastic_LocalConfig_size              754
 #define meshtastic_LocalModuleConfig_size        699
 
 #ifdef __cplusplus
