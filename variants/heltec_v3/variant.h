@@ -1,4 +1,5 @@
-#define USE_TEST_DATA
+//#define USE_NYAN_TEST_DATA
+#define DISABLE_INA_CHARGING_DETECTION
 
 // Which I2C bus: Wire, Wire1, ...
 #define INA3221_BUS Wire1
