@@ -98,7 +98,7 @@ void SystemTime(const tN2kMsg &N2kMsg) {
       PrintLabelValWithConversionCheckUnDef("  seconds since midnight: ",SystemTime,0,true);
       //                        LOG_DEBUG("  time source: "); PrintN2kEnumType(TimeSource,OutputStream);
     } else {
-      LOG_DEBUG("Failed to parse PGN: %u\n", N2kMsg.PGN);
+      LOG_DEBUG("Failed to parse PGN: %u", N2kMsg.PGN);
     }
 }
 
@@ -115,12 +115,12 @@ void HandleWaterDepth(const tN2kMsg &N2kMsg) {
     if (offset >= 0) {
       dbs = dbt + offset;
       v.water_depth.set(dbs);
-      LOG_DEBUG("N2K: Set water depth to %f from DPT message\n", dbs);
+      LOG_DEBUG("N2K: Set water depth to %f from DPT message", dbs);
     } else {
       // Don't care about depth below keel. Need depth below surface.
       dbk = dbt + offset;
       v.water_depth_below_keel.set(dbk);
-      LOG_DEBUG("N2K: Got DPT message with negative offset (depth below keel).\n");
+      LOG_DEBUG("N2K: Got DPT message with negative offset (depth below keel).");
       return;
     }
   }
@@ -132,7 +132,7 @@ void HandleWindSpeed(const tN2kMsg &N2kMsg) {
   double WindAngle;
   tN2kWindReference WindReference;
 
-  LOG_DEBUG("Handling N2K wind speed.\n");
+  LOG_DEBUG("Handling N2K wind speed.");
 
   if (ParseN2kWindSpeed(N2kMsg, SID,
                         WindSpeed, WindAngle,
@@ -158,7 +158,7 @@ void HandleWindSpeed(const tN2kMsg &N2kMsg) {
       v.AWA.set(WindAngle);
     }
   } else {
-    LOG_ERROR("N2K: ParseN2kWindSpeed failed.\n");
+    LOG_ERROR("N2K: ParseN2kWindSpeed failed.");
   }
 }
 
@@ -167,21 +167,21 @@ void HandleHeading(const tN2kMsg &N2kMsg) {
   tN2kHeadingReference ref;
   double Heading, Deviation, Variation;
 
-  LOG_DEBUG("N2k: Handling heading.\n");
+  LOG_DEBUG("N2k: Handling heading.");
   if (ParseN2kHeading(N2kMsg, SID, Heading, Deviation, Variation, ref)) {
     switch (ref) {
     case N2khr_true:
       v.HDT.set(RadToDeg(Heading));
-      LOG_DEBUG("N2k got true heading %f\n", RadToDeg(Heading));
+      LOG_DEBUG("N2k got true heading %f", RadToDeg(Heading));
       break;
 
     case N2khr_magnetic:
-      LOG_DEBUG("N2k got magnetic heading %f\n", RadToDeg(Heading));
+      LOG_DEBUG("N2k got magnetic heading %f", RadToDeg(Heading));
       if (! v.HDT.valid()) {
         // Only use it if we don't have a true heading already
         // FIXME variation / deviation
         v.HDT.set(RadToDeg(Heading));
-        LOG_DEBUG("N2k got magnetic heading %f\n", RadToDeg(Heading));
+        LOG_DEBUG("N2k got magnetic heading %f", RadToDeg(Heading));
       }
       break;
     }
@@ -199,7 +199,7 @@ void HandleCOGSOG(const tN2kMsg &N2kMsg) {
     case N2khr_true:
       v.position_nmea.COG = RadToDeg(COG);
       v.position_nmea.SOG = msToKnots(SOG);
-      LOG_DEBUG("N2k: COG: %f, SOG: %f\n", RadToDeg(COG), msToKnots(SOG));
+      LOG_DEBUG("N2k: COG: %f, SOG: %f", RadToDeg(COG), msToKnots(SOG));
     }
   }
 }
@@ -235,7 +235,7 @@ void Handle129029(const tN2kMsg &N2kMsg) {
     v.position_nmea.longitude = longitude;
     v.position_nmea.set_valid(); // FIXME: also affects SOG/COG
 
-    LOG_DEBUG("N2k got position from 129029 (GNSS Position Data): %f %f\n",
+    LOG_DEBUG("N2k got position from 129029 (GNSS Position Data): %f %f",
               latitude, longitude);
   }
 }
@@ -250,7 +250,7 @@ void Handle129025(const tN2kMsg &N2kMsg) {
     v.position_nmea.longitude = longitude;
     v.position_nmea.set_valid(); // FIXME: also affects SOG/COG
 
-    LOG_DEBUG("N2k got position from 129025 (rapid update): %f %f\n",
+    LOG_DEBUG("N2k got position from 129025 (rapid update): %f %f",
               latitude, longitude);
   }
 }
@@ -275,7 +275,7 @@ void Handle130316(const tN2kMsg &N2kMsg) {
     switch (TempSource) {
     case N2kts_SeaTemperature:
       v.water_temperature.set(KelvinToC(ActualTemperature));
-      LOG_DEBUG("N2K: water temp %fC\n", KelvinToC(ActualTemperature));
+      LOG_DEBUG("N2K: water temp %fC", KelvinToC(ActualTemperature));
       break;
     }
   }
@@ -292,7 +292,7 @@ void Handle130310(const tN2kMsg &N2kMsg) {
                                              OutsideAmbientAirTemperature,
                                              AtmosphericPressure)) {
     v.water_temperature.set(KelvinToC(WaterTemperature));
-    LOG_DEBUG("Parsed 130310. Water temp %.2fC\n", KelvinToC(WaterTemperature));
+    LOG_DEBUG("Parsed 130310. Water temp %.2fC", KelvinToC(WaterTemperature));
   }
 }
 
@@ -330,7 +330,7 @@ void HandleNMEA2000Msg(const tN2kMsg &N2kMsg) {
 
   int iHandler;
 
-  LOG_DEBUG("Handling PGN %u\n", N2kMsg.PGN);
+  LOG_DEBUG("Handling PGN %u", N2kMsg.PGN);
 
   // Find handler
   for (iHandler=0; NMEA2000Handlers[iHandler].PGN!=0 &&
@@ -465,13 +465,13 @@ void nyan_N2K_setup() {
   //  n2k->SetN2kCANMsgBufSize(2);
 
   if (n2k->Open()) {
-    LOG_INFO("Opened N2K CAN bus\n");
+    LOG_INFO("Opened N2K CAN bus");
     n2k->ParseMessages(); // Docs say needs to be called promptly after open.
   } else {
-    LOG_ERROR("Failed to open N2K CAN bus\n");
+    LOG_ERROR("Failed to open N2K CAN bus");
   }
 
-  LOG_DEBUG("CAN: nyan_N2K_setup done\n");
+  LOG_DEBUG("CAN: nyan_N2K_setup done");
 #endif
 }
 

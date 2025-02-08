@@ -72,16 +72,16 @@ void NMEA_read() {
   const char *host = "shore.halekai.uk";
 
   if (!WiFi.isConnected()) {
-    LOG_INFO("WiFi not connected\n");
+    LOG_INFO("WiFi not connected");
     return;
   }
 
   if (! tcp.connected()) {
-    LOG_WARN("TCP not connected\n");
+    LOG_WARN("TCP not connected");
     if (tcp.connect(host, port)) {
-      LOG_INFO("TCP connected\n");
+      LOG_INFO("TCP connected");
     } else {
-      LOG_WARN("Connecting TCP NMEA failed.\n");
+      LOG_WARN("Connecting TCP NMEA failed.");
       return;
     }
   }
@@ -108,7 +108,7 @@ void NMEA_read() {
 
         // null terminate, to treat as string
         nmea_buffer[nmea_index-1] = 0;
-        //LOG_DEBUG("Parsing %.6s\n", nmea_buffer);
+        //LOG_DEBUG("Parsing %.6s", nmea_buffer);
         parse_sentence(nmea_buffer);
       }
       goto done;
@@ -119,7 +119,7 @@ void NMEA_read() {
     continue;
 
   err:
-    LOG_ERROR("NMEA parse error\n");
+    LOG_ERROR("NMEA parse error");
   done:
     nmea_index = 0;
   }
@@ -148,7 +148,7 @@ bool get_local_GPS(NyanVessel& v) {
     v.position_gnss_builtin.latitude  = localPosition.latitude_i  * 1e-7;
     v.position_gnss_builtin.longitude = localPosition.longitude_i * 1e-7;
 
-    LOG_DEBUG("Got fix from builtin GNSS. SOG %f COG %f\n",
+    LOG_DEBUG("Got fix from builtin GNSS. SOG %f COG %f",
               v.position_gnss_builtin.SOG, v.position_gnss_builtin.COG);
     return true;
   }
@@ -159,7 +159,7 @@ void sample_NMEA_sensors(NyanVessel& v) {
   v.HDT.sample();
   v.AWA.sample();
   v.AWS.sample();
-  LOG_DEBUG("Sensors after sampling: HDT: %f AWA (av): %f (%f) AWS (av) : %f %f\n",
+  LOG_DEBUG("Sensors after sampling: HDT: %f AWA (av): %f (%f) AWS (av) : %f %f",
             v.HDT.get(), v.AWA.raw(), v.AWA.get(),
             v.AWS.raw(), v.AWS.get());
 
@@ -190,15 +190,15 @@ void signalk_test(NyanVessel v) {
   String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Im55YW4iLCJpYXQiOjE3MTAwMDQ2NDMsImV4cCI6MjAyNTU4MDY0M30.HjqsMoUgywAL9oHmEnF3ZmhPqY7fOdgPgsOjeten8CI";
 
   if (!WiFi.isConnected()) {
-    LOG_INFO("WiFi not connected\n");
+    LOG_INFO("WiFi not connected");
     return;
   }
 
   if (! tcp.connected()) {
     if (tcp.connect(host, port)) {
-      LOG_INFO("SignalK TCP connected\n");
+      LOG_INFO("SignalK TCP connected");
     } else {
-      LOG_WARN("Connecting SignalK TCP failed.\n");
+      LOG_WARN("Connecting SignalK TCP failed.");
       return;
     }
   }
@@ -226,14 +226,14 @@ void signalk_test(NyanVessel v) {
       R"({"path": "navigation.position", "value": {"latitude": )" +
       String(pos.latitude) + R"(, "longitude": )" + String(pos.longitude) + "}},";
 
-    LOG_DEBUG("pos.latitude is %s by arduino, %f by printf\n", String(pos.latitude), pos.latitude);
+    LOG_DEBUG("pos.latitude is %s by arduino, %f by printf", String(pos.latitude), pos.latitude);
   }
 
-  LOG_DEBUG("v.GWS.stats.quality(): %f v.GWS.stats.mean(): %f\n",
+  LOG_DEBUG("v.GWS.stats.quality(): %f v.GWS.stats.mean(): %f",
             v.GWS.stats.quality(), v.GWS.stats.mean());
 
   if (v.GWS.stats.quality() > 0.1 && v.GWD.stats.quality() > 0.1) {
-    LOG_DEBUG("SignalK: sending ground wind\n");
+    LOG_DEBUG("SignalK: sending ground wind");
 
     R"({"path": "environment.wind.speedOverGround", "meta" : {"units": "C"}, "value": )"
         + String(v.GWS.stats.mean()) + "}"
@@ -289,15 +289,15 @@ void signalk_send(const char *json) {
   const uint16_t port = 8375;
 
   if (!WiFi.isConnected()) {
-    LOG_WARN("WiFi not connected for SignalK send.\n");
+    LOG_WARN("WiFi not connected for SignalK send.");
     return;
   }
 
   if (! tcp.connected()) {
     if (tcp.connect(host, port)) {
-      LOG_INFO("SignalK TCP connected.\n");
+      LOG_INFO("SignalK TCP connected.");
     } else {
-      LOG_WARN("Connecting SignalK TCP failed.\n");
+      LOG_WARN("Connecting SignalK TCP failed.");
       return;
     }
   }
@@ -340,7 +340,7 @@ void NyanModule::send_report() {
     // Clear statistics collection, ready for the next met reporting period.
     v.GWS.stats.reset();
 
-    LOG_DEBUG("Sending Ground Wind %i kts, %i°T Gust: %i kts\n",
+    LOG_DEBUG("Sending Ground Wind %i kts, %i°T Gust: %i kts",
               telemetry.GWS_mean, telemetry.GWD_mean, telemetry.GWS_gust);
   }
 
@@ -348,35 +348,35 @@ void NyanModule::send_report() {
     send = true;
     telemetry.water_temperature = v.water_temperature.get();
     telemetry.has_water_temperature = true;
-    LOG_DEBUG("Water temperature %f°C\n", telemetry.water_temperature);
+    LOG_DEBUG("Water temperature %f°C", telemetry.water_temperature);
   }
 
   if (v.water_depth.valid()) {
     send = true;
     telemetry.water_depth = v.water_depth.get();
     telemetry.has_water_depth = true;
-    LOG_DEBUG("Sending water depth %fm\n", telemetry.water_depth);
+    LOG_DEBUG("Sending water depth %fm", telemetry.water_depth);
   }
 
   if (v.water_depth_below_keel.valid()) {
     send = true;
     telemetry.water_depth_below_keel = v.water_depth_below_keel.get();
     telemetry.has_water_depth_below_keel = true;
-    LOG_DEBUG("Sending water depth below keel%fm\n", telemetry.water_depth_below_keel);
+    LOG_DEBUG("Sending water depth below keel%fm", telemetry.water_depth_below_keel);
   }
 
   if (send) {
     // So people have our name
     nodeInfoModule->sendOurNodeInfo();
 
-    LOG_INFO("Sending Nyan telemetry\n");
+    LOG_INFO("Sending Nyan telemetry");
     meshtastic_MeshPacket *p = allocDataProtobuf(telemetry);
     p->decoded.want_response = false;
     p->priority = meshtastic_MeshPacket_Priority_RELIABLE;
     service->sendToMesh(p);
 
   } else {
-    LOG_INFO("No valid data to report\n");
+    LOG_INFO("No valid data to report");
   }
 }
 
@@ -385,16 +385,16 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
   JSONArray values; // SignalK values object
 
   if (telemetry == NULL) {
-    LOG_WARN("handleReceivedProtobuf() got null protobuf decode\n");
+    LOG_WARN("handleReceivedProtobuf() got null protobuf decode");
     return false;
   }
 
   screen->print("Nyan RXed");
-  LOG_INFO("Received Nyan telemetry from node 0x%0x (Packet ID: 0x%x)\n", mp.from, mp.id);
+  LOG_INFO("Received Nyan telemetry from node 0x%0x (Packet ID: 0x%x)", mp.from, mp.id);
 
   meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(mp.from);
   if (node->has_user) {
-    LOG_DEBUG("Sending station name from NodeDB; name: %s\n",
+    LOG_DEBUG("Sending station name from NodeDB; name: %s",
               node->user.long_name);
 
     JSONObject station_name;
@@ -405,7 +405,7 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
   }
 
   if (telemetry->has_latitude && telemetry->has_longitude) {
-    LOG_INFO("RXed Position: %f %f\n", telemetry->latitude, telemetry->longitude);
+    LOG_INFO("RXed Position: %f %f", telemetry->latitude, telemetry->longitude);
 
     JSONObject position;
     position["latitude"]  = new JSONValue(telemetry->latitude);
@@ -419,7 +419,7 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
   }
 
   if (telemetry->has_GWS_mean) {
-    LOG_INFO("RXed GWS_mean: %f\n", telemetry->GWS_mean);
+    LOG_INFO("RXed GWS_mean: %f", telemetry->GWS_mean);
 
     JSONObject GWS_value;
     GWS_value["path"] = new JSONValue("environment.wind.speedOverGround");
@@ -435,7 +435,7 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
   }
 
   if (telemetry->has_GWD_mean) {
-    LOG_INFO("RXed GWD_mean: %u\n", telemetry->GWD_mean);
+    LOG_INFO("RXed GWD_mean: %u", telemetry->GWD_mean);
 
     JSONObject GWD_value;
     // SignalK seems to lack a ground wind direction value, even though it has ground wind speed!!!
@@ -446,7 +446,7 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
   }
 
   if (telemetry->has_water_temperature) {
-    LOG_INFO("RXed water_temperature: %fC\n", telemetry->water_temperature);
+    LOG_INFO("RXed water_temperature: %fC", telemetry->water_temperature);
 
     JSONObject water_temperature_value;
     water_temperature_value["path"]  = new JSONValue("environment.water.temperature");
@@ -472,9 +472,9 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
   SignalK["updates"] = new JSONValue(updates);
 
   /*
-  LOG_INFO("Water temperature %f°C\n", telemetry->water_temperature);
-  LOG_INFO("Water depth %fm\n", telemetry->water_depth);
-  LOG_INFO("Depth below keel %fm\n", telemetry->water_depth_below_keel);
+  LOG_INFO("Water temperature %f°C", telemetry->water_temperature);
+  LOG_INFO("Water depth %fm", telemetry->water_depth);
+  LOG_INFO("Depth below keel %fm", telemetry->water_depth_below_keel);
   */
 
   JSONValue *JSONvalue = new JSONValue(SignalK);
@@ -518,7 +518,7 @@ int32_t NyanModule::runOnce() {
   AS3935_check_lightning();
 #endif
 
-  //LOG_DEBUG("No of meshtastic tasks: %u\n", task_count());
+  //LOG_DEBUG("No of meshtastic tasks: %u", task_count());
 
   return 3000; // period in milliseconds
 }
@@ -530,7 +530,7 @@ INA3221 ina3221 = INA3221((ina3221_addr_t) INA3221_ADDR);
 
 void INA3221_setup(void) {
 #ifdef USE_INA3221
-  LOG_INFO("INA3221_setup\n");
+  LOG_INFO("INA3221_setup");
 
   ina3221.begin(&INA3221_BUS);
 
@@ -542,9 +542,9 @@ void INA3221_setup(void) {
   delay(10);
 
   if (ina3221.getManufID() == 0x5449) {
-    LOG_DEBUG("Read INA3221 Maufacturer ID OK.\n");
+    LOG_DEBUG("Read INA3221 Maufacturer ID OK.");
   } else {
-    LOG_ERROR("Read INA3221 Maufacturer ID Failed.\n");
+    LOG_ERROR("Read INA3221 Maufacturer ID Failed.");
   }
 
   delay(10);
@@ -557,7 +557,7 @@ void read_INA3221() {
   float I_in = ina3221.getCurrentCompensated(INA3221_CH1) / 1000.0;
   float V_5V = ina3221.getVoltage(INA3221_CH2);
 
-  LOG_DEBUG("INA3221 V_in: %.3fV\t I_in: %.3fA\t V_5V: %.3fV\n", V_in, I_in, V_5V);
+  LOG_DEBUG("INA3221 V_in: %.3fV\t I_in: %.3fA\t V_5V: %.3fV", V_in, I_in, V_5V);
 #endif
 }
 
@@ -596,11 +596,10 @@ void set_test_sensor_data(void) {
 /* A FreeRTOS task to read / filter / store sensor data. */
 void NyanModule::sensor_sampler_task(void *params) {
   while(true) {
-    LOG_DEBUG("NYAN Sampling sensors\n");
-    LOG_DEBUG("NYAN sampler stack high water mark: %u\n",
+    LOG_DEBUG("NYAN Sampling sensors");
+    LOG_DEBUG("NYAN sampler stack high water mark: %u",
               uxTaskGetStackHighWaterMark(NULL));
 
-    /*
     // Inject mock data if in test mode
     if (config.nyan.test_send) {
       if (config.nyan.test_reporting_period < 10000) {
@@ -610,7 +609,6 @@ void NyanModule::sensor_sampler_task(void *params) {
 
       set_test_sensor_data();
     }
-    */
 
     sample_NMEA_sensors(v);
     //    sample_onboard_sensors();
@@ -621,7 +619,7 @@ void NyanModule::sensor_sampler_task(void *params) {
 /* A FreeRTOS task to periodically send metob reports */
 void NyanModule::report_sender_task(void *params) {
   NyanModule *nm = (NyanModule *) params;
-  LOG_DEBUG("NYAN reporter stack high water mark: %u\n",
+  LOG_DEBUG("NYAN reporter stack high water mark: %u",
             uxTaskGetStackHighWaterMark(NULL));
 
   while(true) {
@@ -631,18 +629,18 @@ void NyanModule::report_sender_task(void *params) {
 }
 void debug_memory(void) {
 #ifdef ESP32
-  LOG_DEBUG("ESP.getHeapSize(): %u\n", ESP.getHeapSize());
-  LOG_DEBUG("ESP.getFreeHeap(): %u\n", ESP.getFreeHeap());
+  LOG_DEBUG("ESP.getHeapSize(): %u", ESP.getHeapSize());
+  LOG_DEBUG("ESP.getFreeHeap(): %u", ESP.getFreeHeap());
 
-  LOG_DEBUG("Free heap: %u\n", esp_get_free_heap_size());
-  LOG_DEBUG("Lowest free heap seen: %u\n", esp_get_minimum_free_heap_size());
+  LOG_DEBUG("Free heap: %u", esp_get_free_heap_size());
+  LOG_DEBUG("Lowest free heap seen: %u", esp_get_minimum_free_heap_size());
 #endif
 }
 
 NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan_telemetry_msg),
                            concurrency::OSThread("NyanModule") {
-  LOG_INFO("Starting Nyan Module\n");
-  LOG_INFO("WiFi enabled?: %u\n", config.network.wifi_enabled);
+  LOG_INFO("Starting Nyan Module");
+  LOG_INFO("WiFi enabled?: %u", config.network.wifi_enabled);
 
   TaskHandle_t sensor_task_handle;
   TaskHandle_t reporter_task_handle;
@@ -665,10 +663,10 @@ NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan
   NMEA_serial_setup();
 #endif
 
-#ifdef USE_TEST_DATA
+#ifdef USE_NYAN_TEST_DATA
   // FIXME: build the cli with ability to set this
   config.nyan.test_send = true;
-  config.nyan.test_reporting_period = 20000;
+  config.nyan.test_reporting_period = 60000;
 #endif
 
   auto create_return_val =
@@ -681,12 +679,12 @@ NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan
                 5, // priority
                 &sensor_task_handle);
   if( create_return_val == pdPASS ) {
-    LOG_DEBUG("NYAN sensor sampler task created\n");
+    LOG_DEBUG("NYAN sensor sampler task created");
   } else {
-    LOG_ERROR("NYAN sensor sampler task create FAILED\n");
+    LOG_ERROR("NYAN sensor sampler task create FAILED");
     // Probably not enough memory
   }
-  LOG_DEBUG("After create task\n");
+  LOG_DEBUG("After create task");
   debug_memory();
 
   create_return_val =
@@ -700,11 +698,11 @@ NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan
                 5, // priority
                 &reporter_task_handle);
   if (create_return_val == pdPASS) {
-    LOG_DEBUG("NYAN reporter task created\n");
+    LOG_DEBUG("NYAN reporter task created");
   } else {
-    LOG_ERROR("NYAN reporter task create FAILED\n");
+    LOG_ERROR("NYAN reporter task create FAILED");
     // Probably not enough memory
   }
-  LOG_DEBUG("After create task\n");
+  LOG_DEBUG("After create task");
   debug_memory();
 }
