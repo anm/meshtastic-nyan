@@ -614,8 +614,6 @@ bool Power::setup()
     // initialise one power sensor (only)
     bool found = axpChipInit();
     if (!found)
-        found = lipoInit();
-    if (!found)
         found = analogInit();
 
 #ifdef NRF_APM
