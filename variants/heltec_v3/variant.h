@@ -1,6 +1,16 @@
 //#define USE_NYAN_TEST_DATA
+
+// Lightning sensor
+#define USE_AS3935
+
+// Interrupt pin
+const uint8_t LIGHTNING_IRQ_PIN = 2;
+
+// Don't use meshatistic's INA stuff
 #define DISABLE_INA_CHARGING_DETECTION
 
+// Use Nyan's INA stuff
+#define USE_INA3221
 // Which I2C bus: Wire, Wire1, ...
 #define INA3221_BUS Wire1
 
