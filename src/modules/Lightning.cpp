@@ -15,9 +15,6 @@ const uint8_t NOISE_INT      = 0x01;
 
 SparkFun_AS3935 lightning(AS3935_ADDR);
 
-// Interrupt pin for lightning detection
-const uint8_t LIGHTNING_IRQ_PIN = 15;
-
 // Used for oscillator measurement
 volatile uint32_t AS3935_pulse_count = 0;
 
