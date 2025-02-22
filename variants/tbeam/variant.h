@@ -1,11 +1,37 @@
-// #define BUTTON_NEED_PULLUP // if set we need to turn on the internal CPU pullup during sleep
+//#define USE_NYAN_TEST_DATA
+#define DISABLE_INA_CHARGING_DETECTION
 
+// Which I2C bus: Wire, Wire1, ...
+#define INA3221_BUS Wire1
+
+/*
+  INA3221 Address is set by jumping it's select pin as follows:
+  GND 1000000 64
+  VS  1000001 65
+  SDA 1000010 66
+  SCL 1000011 67
+*/
+#define INA3221_ADDR 67
+
+#define HAS_SCREEN 1
+#define HAS_TELEMETRY 0
+#define HAS_SENSOR 0
+
+//#define USE_NMEA_SERIAL
+//#define NMEA0183_UART_TX 15
+//#define NMEA0183_UART_RX 35
+
+// Enable secondary bus for external peripherals
+#define SDA 32
+#define SCL 33
+//#define I2C_SDA1 SDA
+//#define I2C_SCL1 SCL
+
+// Used for screen
 #define I2C_SDA 21
 #define I2C_SCL 22
 
 #define BUTTON_PIN 38 // The middle button GPIO on the T-Beam
-// #define BUTTON_PIN_ALT 13 // Alternate GPIO for an external button if needed. Does anyone use this? It is not documented
-//  anywhere.
 #define EXT_NOTIFY_OUT 13 // Default pin to use for Ext Notify Module.
 
 #define LED_STATE_ON 0 // State when LED is lit
