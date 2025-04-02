@@ -1,3 +1,6 @@
+// I think this should really go in config.
+#define WIFI_POWER WIFI_POWER_2dBm
+
 //#define USE_NYAN_TEST_DATA
 #define DISABLE_INA_CHARGING_DETECTION
 

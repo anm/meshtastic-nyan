@@ -1,5 +1,8 @@
 //#define USE_NYAN_TEST_DATA
 
+// I think this should really go in config.
+#define WIFI_POWER WIFI_POWER_2dBm
+
 // Lightning sensor
 #define USE_AS3935
 
