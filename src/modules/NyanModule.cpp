@@ -126,6 +126,26 @@ void NMEA_TCP_read() {
   }
 }
 
+bool get_position_fixed(NyanVessel& v) {
+  // Consult meshtastic's manually set position system, and copy to nyan
+  // vessel. Assume we are pointing North.
+
+  if (config.position.fixed_position) {
+    v.position_fixed.latitude = localPosition.latitude_i  * 1e-7;
+    v.position_fixed.longitude = localPosition.longitude_i * 1e-7;
+    v.position_fixed.COG = 0;
+    v.position_fixed.SOG = 0;
+    v.position_fixed.set_valid();
+
+    // Assume any sensors are pointing north
+    v.HDT.set(0);
+
+    return true;
+  }
+
+  return false;
+}
+
 bool get_local_GPS(NyanVessel& v) {
   // FIXME: validity period will be longer than specified. Should call this
   // funcion when GPS supplies a fix.
@@ -138,8 +158,9 @@ bool get_local_GPS(NyanVessel& v) {
   // getValidTime gives what?
 
   if ((localPosition.timestamp > 0) &&
-      ((localPosition.timestamp + validity_period) > getValidTime(RTCQualityFromNet)) &&
-      (localPosition.fix_quality > 0)) {
+      ((localPosition.timestamp + validity_period)
+       > getValidTime(RTCQualityFromNet))
+      && (localPosition.fix_quality > 0)) {
 
     v.position_gnss_builtin.set_valid();
 
@@ -509,6 +530,7 @@ int32_t NyanModule::runOnce() {
   NMEA_serial_loop();
 #endif
 
+  get_position_fixed(v);
   get_local_GPS(v);
 
   // tcp connection failures cause error messages to be sent from ESP IDF,

@@ -202,7 +202,7 @@ struct Position {
 
   // Note that the stored data is valid at the time this function is called.
   void set_valid() {
-    LOG_DEBUG("Setting Position timestamp.\n");
+    LOG_DEBUG("Setting Position timestamp.");
     timestamp = millis();
   }
 
@@ -224,7 +224,9 @@ protected:
 struct NyanVessel {
   Position position_gnss_builtin;
   Position position_nmea;
+  Position position_fixed;
 
+  // FIXME
   SensorAveraging<double, 10> HDT;
   SensorAveraging<double, 10> AWS;
 
@@ -247,17 +249,23 @@ struct NyanVessel {
 
     if (this->position_gnss_builtin.valid()) {
       *p = this->position_gnss_builtin;
-      LOG_DEBUG("Using gnss_builtin\n");
+      LOG_DEBUG("Using gnss_builtin");
       return true;
     }
 
     if (this->position_nmea.valid()) {
       *p = this->position_nmea;
-      LOG_DEBUG("Using position_nmea\n");
+      LOG_DEBUG("Using position_nmea");
       return true;
     }
 
-    LOG_DEBUG("No position available\n");
+    if (this->position_fixed.valid()) {
+      *p = this->position_fixed;
+      LOG_DEBUG("Using position_fixed");
+      return true;
+    }
+
+    LOG_DEBUG("No position available");
     return false;
   }
 };
