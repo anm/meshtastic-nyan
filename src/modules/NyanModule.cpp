@@ -208,8 +208,11 @@ void signalk_test(NyanVessel v) {
   const uint16_t port = 8375;
 
   // SignalK security token
-  // Generate with: signalk-generate-token -u nyan -e 10y -s /home/signalk/.signalk/security.json
-  String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Im55YW4iLCJpYXQiOjE3MTAwMDQ2NDMsImV4cCI6MjAyNTU4MDY0M30.HjqsMoUgywAL9oHmEnF3ZmhPqY7fOdgPgsOjeten8CI";
+  // Generate with: signalk-generate-token -u nyan -e 10y -s
+  // /home/signalk/.signalk/security.json
+  // Note: Not used in the end, because it turns out SignalK doesn't even
+  // implement this over TCP, despite it being specified in the docs!
+  //  String token = "...";
 
   if (!WiFi.isConnected()) {
     LOG_INFO("WiFi not connected");
@@ -228,7 +231,6 @@ void signalk_test(NyanVessel v) {
   String s =
     R"({"context": "vessels.urn:mrn:nyan:)" + String(node_id) + R"(",)"
 
-    // Sending token over tcp seems to be unimplemented by SignalK server
     //    R"("token": ")" + token + R"(",)"
 
     R"("updates": [{"source": {"label": "nyan", "type": "nyan"},)"
@@ -335,7 +337,7 @@ void NyanModule::send_report() {
   // We have data to send
   bool send = false;
 
-   // TODO May want to replace with average position, to correspond with
+  // TODO May want to replace with average position, to correspond with
   // average wind, etc.
   Position p;
   if (v.getPosition(&p)) {
@@ -549,7 +551,6 @@ int32_t NyanModule::runOnce() {
 }
 
 #ifdef USE_INA3221
-//INA3221 ina3221 = INA3221(&INA3221_BUS, (ina3221_addr_t) INA3221_ADDR);
 INA3221 ina3221 = INA3221((ina3221_addr_t) INA3221_ADDR);
 #endif
 
