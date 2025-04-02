@@ -56,7 +56,7 @@ uint32_t met_reporting_period = 600000;
    Read and parse sentences.
    Add data to ship data model.
 */
-void NMEA_read() {
+void NMEA_TCP_read() {
   tNMEA0183Msg NMEA0183Msg;
   tNMEA0183 NMEA0183;
   static WiFiClient tcp;
@@ -68,8 +68,9 @@ void NMEA_read() {
   static char nmea_buffer[NMEA_BUFFER_LENGTH];
   static uint8_t nmea_index = 0;
 
-  const uint16_t port = 10110;
-  const char *host = "shore.halekai.uk";
+  // TODO: Move to config.
+  const char *nmea_tcp_host = "shore.halekai.uk";
+  const uint16_t nmea_tcp_port = 10110;
 
   if (!WiFi.isConnected()) {
     LOG_INFO("WiFi not connected");
@@ -78,7 +79,7 @@ void NMEA_read() {
 
   if (! tcp.connected()) {
     LOG_WARN("TCP not connected");
-    if (tcp.connect(host, port)) {
+    if (tcp.connect(nmea_tcp_host, nmea_tcp_port)) {
       LOG_INFO("TCP connected");
     } else {
       LOG_WARN("Connecting TCP NMEA failed.");
@@ -495,8 +496,10 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
    Delayed to meet desired period, which is the return value.
 */
 int32_t NyanModule::runOnce() {
-  // NMEA tcp
-  NMEA_read();
+
+#ifdef USE_NMEA_TCP
+  NMEA_TCP_read();
+#endif
 
 #ifdef USE_N2K
   nyan_N2K_loop();
