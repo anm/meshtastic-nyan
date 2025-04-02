@@ -40,7 +40,7 @@ uint32_t AS3935_measure_frequency(void) {
   uint32_t f = f_output_divisor * (double) AS3935_pulse_count * 1E6 /
                (double) measurement_period;
 
-  LOG_DEBUG("AS3935_measure_frequency(): counts: %u, time: %u, frequency: %i Hz\n",
+  LOG_DEBUG("AS3935_measure_frequency(): counts: %u, time: %u, frequency: %i Hz",
         AS3935_pulse_count, measurement_period, f);
 
   return f;
@@ -59,8 +59,8 @@ bool AS3935_calibrate(void) {
   constexpr uint32_t F_MAX = F_NOMINAL * 1.035;
   constexpr uint32_t F_MIN = F_NOMINAL * 0.965;
 
-  LOG_INFO("Calibrating AS3935 Lightning Sensor\n");
-  LOG_DEBUG("Lightning: Calibrating LCO. Acceptable range %lu kHz to %lu kHz\n",
+  LOG_INFO("Calibrating AS3935 Lightning Sensor");
+  LOG_DEBUG("Lightning: Calibrating LCO. Acceptable range %lu kHz to %lu kHz",
         F_MIN, F_MAX);
 
   uint8_t cap;
@@ -70,7 +70,7 @@ bool AS3935_calibrate(void) {
     frequency = AS3935_measure_frequency();
     f_error = frequency - F_NOMINAL;
 
-    LOG_DEBUG("Trimcap: %upF, Error: %li Hz, %.1f%%\n",
+    LOG_DEBUG("Trimcap: %upF, Error: %li Hz, %.1f%%",
           cap, f_error, (100.0 * f_error/(double)F_NOMINAL));
     if (cap == 0) {
       min_f_error = f_error;
@@ -85,7 +85,7 @@ bool AS3935_calibrate(void) {
 
   lightning.displayOscillator(false, 3);
 
-  LOG_DEBUG("Lowest error: %.1f%%. Using %upF.\n",
+  LOG_DEBUG("Lowest error: %.1f%%. Using %upF.",
         (100.0 * min_f_error / (double)F_NOMINAL),
         min_f_error_cap);
 
@@ -93,14 +93,14 @@ bool AS3935_calibrate(void) {
 
   bool f_error_acceptable = labs(min_f_error) < (F_NOMINAL * 0.035);
   if (!f_error_acceptable) {
-    LOG_ERROR("Lightning LC Osc calibration failed - best f out of range.\n");
+    LOG_ERROR("Lightning LC Osc calibration failed - best f out of range.");
     return false;
   }
 
   // Calibrate the other two internal oscillators from the LC one just done.
   bool int_cal_ok = lightning.calibrateOsc();
   if (!int_cal_ok) {
-    LOG_ERROR("Lightning: Calibrating internal oscillators failed.\n");
+    LOG_ERROR("Lightning: Calibrating internal oscillators failed.");
     return false;
   }
 
@@ -114,10 +114,10 @@ void AS3935_setup(void) {
   // Needed, but expected to be done already by meshtastic
   Wire.begin();
 
-  LOG_INFO("AS3935 Lightning sensor starting.\n");
+  LOG_INFO("AS3935 Lightning sensor starting.");
 
   if (!lightning.begin()) {
-    LOG_ERROR("Lightning sensor begin() failed.\n");
+    LOG_ERROR("Lightning sensor begin() failed.");
     return;
   }
 
@@ -137,7 +137,7 @@ void AS3935_setup(void) {
   lightning.spikeRejection(2);
 
   int int_reg = lightning.readInterruptReg();
-  LOG_DEBUG("Initial read of int reg: %u\n", int_reg);
+  LOG_DEBUG("Initial read of int reg: %u", int_reg);
 }
 
 void AS3935_check_lightning(void) {
@@ -150,24 +150,24 @@ void AS3935_check_lightning(void) {
       // TODO: Increment counters for this reporting period.
 
     case NOISE_INT:
-      LOG_INFO("Lightning Sensor: Noise floor too high\n");
+      LOG_INFO("Lightning Sensor: Noise floor too high");
       break;
 
     case DISTURBER_INT:
-      LOG_INFO("Lightning Sensor: Disturber (QRM) detected\n");
+      LOG_INFO("Lightning Sensor: Disturber (QRM) detected");
       break;
 
     case LIGHTNING_INT:
-      LOG_INFO("Lightning Sensor: Lightning detected!\n");
+      LOG_INFO("Lightning Sensor: Lightning detected!");
 
       distance = lightning.distanceToStorm();
-      LOG_INFO("Lightning distance approx %u km\n", distance);
+      LOG_INFO("Lightning distance approx %u km", distance);
 
       // TODO: Send report immediatly, I think.
       break;
 
     default:
-      LOG_ERROR("Lightning Sensor: Unknown value in interrupt register: %u\n", intVal);
+      LOG_ERROR("Lightning Sensor: Unknown value in interrupt register: %u", intVal);
       break;
     }
   }
