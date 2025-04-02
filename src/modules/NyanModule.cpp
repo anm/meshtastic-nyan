@@ -78,7 +78,6 @@ void NMEA_TCP_read() {
   }
 
   if (! tcp.connected()) {
-    LOG_WARN("TCP not connected");
     if (tcp.connect(nmea_tcp_host, nmea_tcp_port)) {
       LOG_INFO("TCP connected");
     } else {
@@ -87,11 +86,15 @@ void NMEA_TCP_read() {
     }
   }
 
-  /* Read and parse NMEA sentences. */
-  constexpr uint32_t time_limit = 500; // mS
+  const uint32_t time_limit = 500; // mS
   uint32_t end_time = millis() + time_limit;
-  //  while (tcp.available() && millis() < end_time) {
+
   while (tcp.available()) {
+    if (millis() > end_time) {
+      LOG_ERROR("NMEA TCP parsing taking too long.");
+      return;
+    }
+
     nmea_buffer[nmea_index] = static_cast<char>(tcp.read());
 
     // There should be no null chars
@@ -109,10 +112,10 @@ void NMEA_TCP_read() {
 
         // null terminate, to treat as string
         nmea_buffer[nmea_index-1] = 0;
-        //LOG_DEBUG("Parsing %.6s", nmea_buffer);
         parse_sentence(nmea_buffer);
+        goto done;
       }
-      goto done;
+      goto err;
     }
 
     // Move on and loop for next char
