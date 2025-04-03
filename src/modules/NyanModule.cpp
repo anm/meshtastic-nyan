@@ -189,10 +189,12 @@ void sample_NMEA_sensors(NyanVessel& v) {
             v.AWS.raw(), v.AWS.get());
 
   /* Ground wind */
-  double GWS, GWD;
-  Wind::derive_ground_wind(v, GWS, GWD);
-  v.GWS.stats.sample(GWS);
-  v.GWD.stats.sample(GWD);
+  double GWS = 0;
+  double GWD = 0;
+  if (Wind::derive_ground_wind(v, GWS, GWD)) {
+    v.GWS.stats.sample(GWS);
+    v.GWD.stats.sample(GWD);
+  }
 }
 
 void signalk_test(NyanVessel v) {
