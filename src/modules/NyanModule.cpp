@@ -367,6 +367,8 @@ void NyanModule::send_report() {
   }
 
   if (v.GWS.stats.quality() > 0) {
+    LOG_DEBUG("GWS quality: %f", v.GWS.stats.quality());
+
     send = true;
     telemetry.GWS_mean = (uint8_t) v.GWS.stats.mean();
     telemetry.has_GWS_mean = true;
@@ -374,15 +376,17 @@ void NyanModule::send_report() {
     telemetry.GWS_gust = (uint8_t) v.GWS.stats.max();
     telemetry.has_GWS_gust = true;
 
+    // FIXME: separate or check quality too
     telemetry.GWD_mean = (uint16_t) v.GWD.stats.mean();
     telemetry.has_GWD_mean = true;
 
-    // Clear statistics collection, ready for the next met reporting period.
-    v.GWS.stats.reset();
-
-    LOG_DEBUG("Sending Ground Wind %u kts, %u°T Gust: %u kts",
+    LOG_DEBUG("Sending Ground Wind %u kts, %u T Gust: %u kts",
               telemetry.GWS_mean, telemetry.GWD_mean, telemetry.GWS_gust);
   }
+
+  // Clear statistics collection, ready for the next met reporting period.
+  v.GWS.stats.reset();
+  v.GWD.stats.reset();
 
   if (v.water_temperature.valid()) {
     send = true;
