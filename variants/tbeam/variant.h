@@ -2,9 +2,12 @@
 #define WIFI_POWER WIFI_POWER_2dBm
 
 //#define USE_NYAN_TEST_DATA
+
+// Don't use meshatistic's INA stuff
 #define DISABLE_INA_CHARGING_DETECTION
 
-// Which I2C bus: Wire, Wire1, ...
+// Use Nyan's INA stuff
+#define USE_INA3221
 #define INA3221_BUS Wire1
 
 /*
@@ -25,8 +28,9 @@
 //#define NMEA0183_UART_RX 35
 
 // Enable secondary bus for external peripherals
-#define SDA 32
-#define SCL 33
+// Not tested but look like they might work on tbeam
+#define SDA 25
+#define SCL 14
 //#define I2C_SDA1 SDA
 //#define I2C_SCL1 SCL
 

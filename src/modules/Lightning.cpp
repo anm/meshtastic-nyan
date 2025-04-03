@@ -1,5 +1,6 @@
 // Author: River MacLeod
 
+#ifdef USE_AS3935
 #include "Lightning.h"
 
 #include "configuration.h"
@@ -179,3 +180,4 @@ void AS3935_check_lightning(void) {
     }
   }
 }
+#endif

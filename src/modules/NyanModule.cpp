@@ -52,11 +52,10 @@ NyanVessel v;
 uint32_t met_reporting_period = 60000;
 
 void debug_memory(void) {
-#ifdef ESP32
-  LOG_DEBUG("ESP.getHeapSize(): %u", ESP.getHeapSize());
-  LOG_DEBUG("ESP.getFreeHeap(): %u", ESP.getFreeHeap());
+  LOG_DEBUG("Heap size: %u", memGet.getHeapSize());
+  LOG_DEBUG("Free heap: %u", memGet.getFreeHeap());
 
-  LOG_DEBUG("Free heap: %u", esp_get_free_heap_size());
+#ifdef ARCH_ESP32
   LOG_DEBUG("Lowest free heap seen: %u", esp_get_minimum_free_heap_size());
 #endif
 }
@@ -552,12 +551,6 @@ void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
   updates.push_back(new JSONValue(update));
   SignalK["updates"] = new JSONValue(updates);
 
-  /*
-  LOG_INFO("Water temperature %f°C", telemetry->water_temperature);
-  LOG_INFO("Water depth %fm", telemetry->water_depth);
-  LOG_INFO("Depth below keel %fm", telemetry->water_depth_below_keel);
-  */
-
   JSONValue *JSONvalue = new JSONValue(SignalK);
   string json_s = JSONvalue->Stringify() + "\n";
 
@@ -589,8 +582,6 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
   return false;
 }
 
-/* Periodically send ship data over mesh. */
-
 /* Can run every time the thread is scheduled.
    Delayed to meet desired period, which is the return value.
 */
@@ -611,17 +602,11 @@ int32_t NyanModule::runOnce() {
   get_position_fixed(v);
   get_local_GPS(v);
 
-  // tcp connection failures cause error messages to be sent from ESP IDF,
-  // which I think are causing meshtastic serial protocol to fail. arg.
-  // signalk_test(v);
-
   sample_onboard_sensors();
 
 #ifdef USE_AS3935
   AS3935_check_lightning();
 #endif
-
-  //LOG_DEBUG("No of meshtastic tasks: %u", task_count());
 
   return 3000; // period in milliseconds
 }
@@ -636,6 +621,7 @@ void INA3221_setup(void) {
 
   ina3221.begin(&INA3221_BUS);
 
+  // TODO Configuration
   ina3221.setShuntRes(50, 100, 100); // In milliOhms
   ina3221.setFilterRes(10, 10, 10); // In Ohms
 
@@ -662,7 +648,7 @@ void read_INA3221() {
   v.nyan_supply_voltage.set(V_in);
   v.nyan_supply_voltage.sample();
 
-  LOG_DEBUG("INA3221 V_in: %.3fV\t I_in: %.3fA\t V_5V: %.3fV", V_in, I_in, V_5V);
+  LOG_DEBUG("INA3221 V_in: %.3fV I_in: %.3fA V_5V: %.3fV", V_in, I_in, V_5V);
 #endif
 }
 
@@ -724,10 +710,9 @@ void NyanModule::sensor_sampler_task(void *params) {
 /* A FreeRTOS task to periodically send metob reports */
 void NyanModule::report_sender_task(void *params) {
   NyanModule *nm = (NyanModule *) params;
-  LOG_DEBUG("NYAN reporter stack high water mark: %u",
-            uxTaskGetStackHighWaterMark(NULL));
-
   while(true) {
+    LOG_DEBUG("NYAN reporter stack high water mark: %u",
+              uxTaskGetStackHighWaterMark(NULL));
     delay(met_reporting_period);
     nm->send_report();
 
@@ -771,12 +756,19 @@ NyanModule::NyanModule() : ProtobufModule("nyan",
   config.nyan.test_reporting_period = 600000;
 #endif
 
+  // In bytes
+  //size_t stack_size = 3000;
+  size_t stack_size = 5000;
+#ifndef ARCH_ESP32
+  // FreeRTOS standard is words, but espressif made it bytes.
+  stack_size /= 4;
+#endif
+
   auto create_return_val =
     xTaskCreate(NyanModule::sensor_sampler_task,
                 "NYAN sensor sampler",
-                // Stack size, in bytes, not words,
                 // contrary to rtos docs, because espressif...
-                3000,
+                stack_size,
                 NULL, // task paramaters
                 5, // priority
                 &sensor_task_handle);
@@ -789,13 +781,22 @@ NyanModule::NyanModule() : ProtobufModule("nyan",
   LOG_DEBUG("After create task");
   debug_memory();
 
+  // In bytes
+  //  stack_size = 8000;
+  stack_size = 12000;
+
+#ifndef ARCH_ESP32
+  // FreeRTOS standard is words, but espressif made it bytes.
+  //stack_size /= 4;
+#endif
+
   create_return_val =
     xTaskCreate(NyanModule::report_sender_task,
                 "NYAN report sender",
                 // Stack size, in bytes, not words,
                 // contrary to rtos docs, because espressif...
                 // TODO ifdef to change for other platforms
-                8000,
+                stack_size,
                 this, // task paramaters
                 5, // priority
                 &reporter_task_handle);

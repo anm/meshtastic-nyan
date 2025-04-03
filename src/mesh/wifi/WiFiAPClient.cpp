@@ -149,7 +149,11 @@ static int32_t reconnectWiFi()
             WiFi.mode(WIFI_STA);
 #endif
             WiFi.begin(wifiName, wifiPsw);
+
+#if defined(ARCH_ESP32)
+            // This function seems to be missing from Pico W
             WiFi.setTxPower(WIFI_POWER);
+#endif
         }
         isReconnecting = false;
     }

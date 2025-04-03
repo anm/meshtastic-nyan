@@ -1,7 +1,3 @@
-// #define RADIOLIB_CUSTOM_ARDUINO 1
-// #define RADIOLIB_TONE_UNSUPPORTED 1
-// #define RADIOLIB_SOFTWARE_SERIAL_UNSUPPORTED 1
-
 #define DISABLE_INA_CHARGING_DETECTION
 #define HAS_SCREEN 0
 
@@ -16,7 +12,8 @@
 //#define I2C_SDA1 14
 //#define I2C_SCL1 15
 
-//#define USE_INA3221
+// Use Nyan's INA stuff
+#define USE_INA3221
 //#define INA3221_BUS Wire1
 
 #define I2C_SDA 16
@@ -25,6 +22,9 @@
 #define INA3221_ADDR 67
 
 #define USE_N2K
+
+#define HAS_TELEMETRY 0
+#define HAS_SENSOR 0
 
 // Recommended pins for SerialModule:
 // txd = 8
