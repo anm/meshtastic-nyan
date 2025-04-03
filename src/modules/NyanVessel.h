@@ -169,7 +169,7 @@ void Statistics<T>::sample(T v) {
 template<typename T>
 double Statistics<T>::quality() {
   if (read_attempts == 0) {
-    return 0;
+    return 0.0;
   }
 
   return count / (double) read_attempts;
