@@ -79,7 +79,10 @@ T Sensor<T>::get() {
   return val;
 }
 
-/* Provides a running average of a sensor value. */
+/* Provides a running average of a sensor value. Maintains data unless it gets
+ an invalid sensor read, then throws everything away. Can a be read at any
+ time. Reading before buffer is full will be biased to the first sample.
+*/
 template<typename T, size_t length>
 class SensorAveraging : public Sensor<T> {
 public:
@@ -225,6 +228,8 @@ struct NyanVessel {
   Position position_gnss_builtin;
   Position position_nmea;
   Position position_fixed;
+
+  SensorAveraging<float, 60> nyan_supply_voltage;
 
   // FIXME
   SensorAveraging<double, 10> HDT;

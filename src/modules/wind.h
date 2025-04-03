@@ -45,7 +45,6 @@ public:
     return awd;
   }
 
-
   static bool derive_ground_wind(NyanVessel& v, double& GWS, double& GWD) {
     Position pos;
     bool havePosition = v.getPosition(&pos);

@@ -49,7 +49,17 @@ NyanVessel v;
 */
 
 /* Weather station reporting period in milliseconds. */
-uint32_t met_reporting_period = 600000;
+uint32_t met_reporting_period = 60000;
+
+void debug_memory(void) {
+#ifdef ESP32
+  LOG_DEBUG("ESP.getHeapSize(): %u", ESP.getHeapSize());
+  LOG_DEBUG("ESP.getFreeHeap(): %u", ESP.getFreeHeap());
+
+  LOG_DEBUG("Free heap: %u", esp_get_free_heap_size());
+  LOG_DEBUG("Lowest free heap seen: %u", esp_get_minimum_free_heap_size());
+#endif
+}
 
 /* Import NMEA0183 data from a tcp server.
    If not connected, connect.
@@ -192,6 +202,7 @@ void sample_NMEA_sensors(NyanVessel& v) {
   double GWS = 0;
   double GWD = 0;
   if (Wind::derive_ground_wind(v, GWS, GWD)) {
+    LOG_INFO("Derived ground wind: %f kn, %f T", GWS, GWD);
     v.GWS.stats.sample(GWS);
     v.GWD.stats.sample(GWD);
   }
@@ -360,7 +371,7 @@ void NyanModule::send_report() {
     telemetry.GWS_mean = (uint8_t) v.GWS.stats.mean();
     telemetry.has_GWS_mean = true;
 
-    telemetry.GWS_gust = v.GWS.stats.max();
+    telemetry.GWS_gust = (uint8_t) v.GWS.stats.max();
     telemetry.has_GWS_gust = true;
 
     telemetry.GWD_mean = (uint16_t) v.GWD.stats.mean();
@@ -369,7 +380,7 @@ void NyanModule::send_report() {
     // Clear statistics collection, ready for the next met reporting period.
     v.GWS.stats.reset();
 
-    LOG_DEBUG("Sending Ground Wind %i kts, %i°T Gust: %i kts",
+    LOG_DEBUG("Sending Ground Wind %u kts, %u°T Gust: %u kts",
               telemetry.GWS_mean, telemetry.GWD_mean, telemetry.GWS_gust);
   }
 
@@ -391,7 +402,16 @@ void NyanModule::send_report() {
     send = true;
     telemetry.water_depth_below_keel = v.water_depth_below_keel.get();
     telemetry.has_water_depth_below_keel = true;
-    LOG_DEBUG("Sending water depth below keel%fm", telemetry.water_depth_below_keel);
+    LOG_DEBUG("Sending water depth below keel%fm",
+              telemetry.water_depth_below_keel);
+  }
+
+  if (v.nyan_supply_voltage.valid()) {
+    send = true;
+    telemetry.nyan_supply_decivolts = round(v.nyan_supply_voltage.get() * 10.0);
+    telemetry.has_nyan_supply_decivolts = true;
+    LOG_DEBUG("Sending supply voltage: %u dV",
+              telemetry.nyan_supply_decivolts);
   }
 
   if (send) {
@@ -404,26 +424,27 @@ void NyanModule::send_report() {
     p->priority = meshtastic_MeshPacket_Priority_RELIABLE;
     service->sendToMesh(p);
 
+    NyanModule::NyanTelemetryToSignalK(*p, &telemetry);
   } else {
     LOG_INFO("No valid data to report");
   }
 }
 
-bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
+/* Convert Nyan Telemery packets to SignalK and send to local SignalK
+   server. Maybe used fer received packets and own packets that are being sent
+   out. (Analogy: AIVDM, AIVDO).
+ */
+void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
                                         nyan_telemetry *telemetry) {
+
+  LOG_INFO("NyanTelemetryToSignalK()");
+  debug_memory();
+
   JSONArray values; // SignalK values object
-
-  if (telemetry == NULL) {
-    LOG_WARN("handleReceivedProtobuf() got null protobuf decode");
-    return false;
-  }
-
-  screen->print("Nyan RXed");
-  LOG_INFO("Received Nyan telemetry from node 0x%0x (Packet ID: 0x%x)", mp.from, mp.id);
 
   meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(mp.from);
   if (node->has_user) {
-    LOG_DEBUG("Sending station name from NodeDB; name: %s",
+    LOG_DEBUG("SignalK: setting station name from NodeDB; name: %s",
               node->user.long_name);
 
     JSONObject station_name;
@@ -434,7 +455,9 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
   }
 
   if (telemetry->has_latitude && telemetry->has_longitude) {
-    LOG_INFO("RXed Position: %f %f", telemetry->latitude, telemetry->longitude);
+    LOG_INFO("telemetry Position: %f %f",
+             telemetry->latitude,
+             telemetry->longitude);
 
     JSONObject position;
     position["latitude"]  = new JSONValue(telemetry->latitude);
@@ -448,7 +471,7 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
   }
 
   if (telemetry->has_GWS_mean) {
-    LOG_INFO("RXed GWS_mean: %f", telemetry->GWS_mean);
+    LOG_INFO("telemetry GWS_mean: %u", telemetry->GWS_mean);
 
     JSONObject GWS_value;
     GWS_value["path"] = new JSONValue("environment.wind.speedOverGround");
@@ -464,10 +487,11 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
   }
 
   if (telemetry->has_GWD_mean) {
-    LOG_INFO("RXed GWD_mean: %u", telemetry->GWD_mean);
+    LOG_INFO("telemetry GWD_mean: %u", telemetry->GWD_mean);
 
     JSONObject GWD_value;
-    // SignalK seems to lack a ground wind direction value, even though it has ground wind speed!!!
+    // SignalK seems to lack a ground wind direction key, even though it has
+    // ground wind speed!!!
     GWD_value["path"] = new JSONValue("environment.wind.directionTrue");
     GWD_value["value"] = new JSONValue(DegToRad(telemetry->GWD_mean));
 
@@ -475,16 +499,40 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
   }
 
   if (telemetry->has_water_temperature) {
-    LOG_INFO("RXed water_temperature: %fC", telemetry->water_temperature);
+    LOG_INFO("telemetry water_temperature: %fC", telemetry->water_temperature);
 
     JSONObject water_temperature_value;
-    water_temperature_value["path"]  = new JSONValue("environment.water.temperature");
-    water_temperature_value["value"] = new JSONValue(CToKelvin(telemetry->water_temperature));
+    water_temperature_value["path"]  =
+      new JSONValue("environment.water.temperature");
+    water_temperature_value["value"] =
+      new JSONValue(CToKelvin(telemetry->water_temperature));
 
     values.push_back(new JSONValue(water_temperature_value));
   }
 
+  if (telemetry->has_nyan_supply_decivolts) {
+    LOG_INFO("telemetry nyan_supply_decivolts: %udV",
+             telemetry->nyan_supply_decivolts);
+
+    JSONObject nyan_supply_voltage_value;
+
+    // This is not correct - nyan supply is not a battery. I think it's the
+    // closest SignalK has.
+    nyan_supply_voltage_value["path"]  =
+      new JSONValue("electrical.batteries.nyan.voltage");
+    nyan_supply_voltage_value["value"] =
+      new JSONValue(telemetry->nyan_supply_decivolts / 10.0);
+
+    values.push_back(new JSONValue(nyan_supply_voltage_value));
+  }
+
+  // TODO: Water depths
+
   String urn = "vessels.urn:mrn:nyan:" + String(mp.from);
+  // I wondered if base stations would show better as atons, but that doesn't
+  //  show the wind, so not really.
+  // String urn = "atons.urn:mrn:nyan:" + String(mp.from);
+
   JSONObject SignalK;
   SignalK["context"] = new JSONValue(urn.c_str());
 
@@ -508,11 +556,30 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
 
   JSONValue *JSONvalue = new JSONValue(SignalK);
   string json_s = JSONvalue->Stringify() + "\n";
+
+  LOG_DEBUG("Memory after json creating, before delete.");
+  debug_memory();
+
   delete JSONvalue;
 
-  signalk_send(json_s.c_str());
   LOG_DEBUG("JSON string built from received Nyan message: ");
   LOG_DEBUG(json_s.c_str());
+
+  signalk_send(json_s.c_str());
+}
+
+bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
+                                        nyan_telemetry *telemetry) {
+  if (telemetry == NULL) {
+    LOG_WARN("handleReceivedProtobuf() got null protobuf decode");
+    return false;
+  }
+
+  screen->print("Nyan RXed");
+  LOG_INFO("Received Nyan telemetry from node 0x%0x (Packet ID: 0x%x)",
+           mp.from, mp.id);
+
+  NyanModule::NyanTelemetryToSignalK(mp, telemetry);
 
   // Pass to other modules too. Maybe needed for the router to rebroadcast it?
   return false;
@@ -588,6 +655,9 @@ void read_INA3221() {
   float I_in = ina3221.getCurrentCompensated(INA3221_CH1) / 1000.0;
   float V_5V = ina3221.getVoltage(INA3221_CH2);
 
+  v.nyan_supply_voltage.set(V_in);
+  v.nyan_supply_voltage.sample();
+
   LOG_DEBUG("INA3221 V_in: %.3fV\t I_in: %.3fA\t V_5V: %.3fV", V_in, I_in, V_5V);
 #endif
 }
@@ -642,7 +712,7 @@ void NyanModule::sensor_sampler_task(void *params) {
     }
 
     sample_NMEA_sensors(v);
-    //    sample_onboard_sensors();
+    sample_onboard_sensors();
     delay(5000);
   }
 }
@@ -656,19 +726,16 @@ void NyanModule::report_sender_task(void *params) {
   while(true) {
     delay(met_reporting_period);
     nm->send_report();
+
+    // Also print some useful info every so often.
+    LOG_INFO("Uptime %us", millis() / 1000);
+    LOG_INFO("TX time last hour: %f%%", airTime->utilizationTXPercent());
   }
 }
-void debug_memory(void) {
-#ifdef ESP32
-  LOG_DEBUG("ESP.getHeapSize(): %u", ESP.getHeapSize());
-  LOG_DEBUG("ESP.getFreeHeap(): %u", ESP.getFreeHeap());
 
-  LOG_DEBUG("Free heap: %u", esp_get_free_heap_size());
-  LOG_DEBUG("Lowest free heap seen: %u", esp_get_minimum_free_heap_size());
-#endif
-}
-
-NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan_telemetry_msg),
+NyanModule::NyanModule() : ProtobufModule("nyan",
+                                          meshtastic_PortNum_NYAN,
+                                          &nyan_telemetry_msg),
                            concurrency::OSThread("NyanModule") {
   LOG_INFO("Starting Nyan Module");
   LOG_INFO("WiFi enabled?: %u", config.network.wifi_enabled);
@@ -697,7 +764,7 @@ NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan
 #ifdef USE_NYAN_TEST_DATA
   // FIXME: build the cli with ability to set this
   config.nyan.test_send = true;
-  config.nyan.test_reporting_period = 60000;
+  config.nyan.test_reporting_period = 600000;
 #endif
 
   auto create_return_val =
@@ -705,7 +772,7 @@ NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan
                 "NYAN sensor sampler",
                 // Stack size, in bytes, not words,
                 // contrary to rtos docs, because espressif...
-                10000,
+                3000,
                 NULL, // task paramaters
                 5, // priority
                 &sensor_task_handle);
@@ -724,7 +791,7 @@ NyanModule::NyanModule() : ProtobufModule("nyan", meshtastic_PortNum_NYAN, &nyan
                 // Stack size, in bytes, not words,
                 // contrary to rtos docs, because espressif...
                 // TODO ifdef to change for other platforms
-                5000,
+                8000,
                 this, // task paramaters
                 5, // priority
                 &reporter_task_handle);

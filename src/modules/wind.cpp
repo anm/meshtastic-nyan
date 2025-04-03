@@ -49,4 +49,3 @@ vec vec::operator-(const vec& v) {
   sum.y = this->y - v.y;
   return sum;
 }
-
