@@ -13,6 +13,10 @@ const uint8_t LIGHTNING_INT  = 0x08;
 const uint8_t DISTURBER_INT  = 0x04;
 const uint8_t NOISE_INT      = 0x01;
 
+// Indicate if setup worked, so can avoid repeatedly trying to read a broken /
+// missing sensor.
+bool AS3935_setup_ok = false;
+
 SparkFun_AS3935 lightning(AS3935_ADDR);
 
 // Used for oscillator measurement
@@ -138,10 +142,13 @@ void AS3935_setup(void) {
 
   int int_reg = lightning.readInterruptReg();
   LOG_DEBUG("Initial read of int reg: %u", int_reg);
+  AS3935_setup_ok = true;
 }
 
 void AS3935_check_lightning(void) {
   uint8_t distance;
+
+  if (!AS3935_setup_ok) return;
 
   if (digitalRead(LIGHTNING_IRQ_PIN)) {
     int intVal = lightning.readInterruptReg();
