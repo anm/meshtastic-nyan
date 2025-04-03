@@ -26,7 +26,7 @@ class Sensor {
 
  protected:
   T val;
-  uint32_t timestamp;
+  int32_t timestamp = 0;
   uint32_t valid_period;
 };
 
@@ -61,7 +61,9 @@ protected:
 };
 
 template<typename T>
-Sensor<T>::Sensor(uint32_t _valid_period) : valid_period{_valid_period} {};
+Sensor<T>::Sensor(uint32_t _valid_period) : valid_period{_valid_period} {
+  timestamp = -_valid_period;
+}
 
 template<typename T>
 bool Sensor<T>::valid() {
@@ -86,7 +88,7 @@ T Sensor<T>::get() {
 template<typename T, size_t length>
 class SensorAveraging : public Sensor<T> {
 public:
- SensorAveraging(uint32_t _valid_period = 5000) : Sensor<T>{_valid_period} {};
+  SensorAveraging(uint32_t _valid_period = 5000) : Sensor<T>{_valid_period} {}
 
   void sample() {
     T d = Sensor<T>::val / length;
@@ -220,7 +222,7 @@ struct Position {
 
 protected:
   // uC mS counter at time message saved. Not time of fix (but probably close).
-  uint32_t timestamp;
+  int32_t timestamp = -20000;
   uint32_t valid_period = 20000;
 };
 
