@@ -35,6 +35,8 @@ typedef struct _nyan_telemetry {
     double latitude;
     bool has_longitude;
     double longitude;
+    bool has_nyan_supply_decivolts;
+    uint32_t nyan_supply_decivolts;
 } nyan_telemetry;
 
 
@@ -43,8 +45,8 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define nyan_telemetry_init_default              {false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0}
-#define nyan_telemetry_init_zero                 {false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0}
+#define nyan_telemetry_init_default              {false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0}
+#define nyan_telemetry_init_zero                 {false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define nyan_telemetry_GWS_mean_tag              1
@@ -59,6 +61,7 @@ extern "C" {
 #define nyan_telemetry_water_depth_below_keel_tag 19
 #define nyan_telemetry_latitude_tag              20
 #define nyan_telemetry_longitude_tag             21
+#define nyan_telemetry_nyan_supply_decivolts_tag 30
 
 /* Struct field encoding specification for nanopb */
 #define nyan_telemetry_FIELDLIST(X, a) \
@@ -73,7 +76,8 @@ X(a, STATIC,   OPTIONAL, FLOAT,    water_temperature,  17) \
 X(a, STATIC,   OPTIONAL, FLOAT,    water_depth,      18) \
 X(a, STATIC,   OPTIONAL, FLOAT,    water_depth_below_keel,  19) \
 X(a, STATIC,   OPTIONAL, DOUBLE,   latitude,         20) \
-X(a, STATIC,   OPTIONAL, DOUBLE,   longitude,        21)
+X(a, STATIC,   OPTIONAL, DOUBLE,   longitude,        21) \
+X(a, STATIC,   OPTIONAL, UINT32,   nyan_supply_decivolts,  30)
 #define nyan_telemetry_CALLBACK NULL
 #define nyan_telemetry_DEFAULT NULL
 
@@ -84,7 +88,7 @@ extern const pb_msgdesc_t nyan_telemetry_msg;
 
 /* Maximum encoded size of messages (where known) */
 #define NYAN_MESHTASTIC_NYAN_PB_H_MAX_SIZE       nyan_telemetry_size
-#define nyan_telemetry_size                      78
+#define nyan_telemetry_size                      85
 
 #ifdef __cplusplus
 } /* extern "C" */
