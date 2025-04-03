@@ -36,7 +36,9 @@ class vec {
   double angle();
 };
 
-/* Angles in degrees. */
+/* All input / output wind angles in degrees.
+ * vec vectors used for calculation are in radians.
+ */
 class Wind {
 public:
   static double derive_AWD(double AWA, double HDT) {
@@ -58,7 +60,7 @@ public:
     LOG_DEBUG("Wind using averages: AWS: %f AWA: %f HDT: %f",
               v.AWS.get(), v.AWA.get(), v.HDT.get());
     vec apparent_wind {v.AWS.get(),
-                       derive_AWD(v.AWA.get() * deg_to_rad, v.HDT.get()) * deg_to_rad};
+                       derive_AWD(v.AWA.get(), v.HDT.get()) * deg_to_rad};
     vec course {pos.SOG, pos.COG * deg_to_rad};
     vec gw = apparent_wind + course;
 
