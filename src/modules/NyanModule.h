@@ -7,6 +7,9 @@ class NyanModule : public ProtobufModule<nyan_telemetry>,
   public:
   NyanModule();
 
+  static void report_sender_task(void *params);
+  static void sensor_sampler_task(void *params);
+
   protected:
 
   virtual int32_t runOnce() override;
@@ -18,7 +21,5 @@ class NyanModule : public ProtobufModule<nyan_telemetry>,
                          nyan_telemetry *telemetry);
   static void sample_onboard_sensors(void);
 
-  static void report_sender_task(void *params);
-  static void sensor_sampler_task(void *params);
   void send_report();
 };

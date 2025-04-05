@@ -49,7 +49,22 @@ NyanVessel v;
 */
 
 /* Weather station reporting period in milliseconds. */
-uint32_t met_reporting_period = 60000;
+uint32_t met_reporting_period = 600000;
+
+class ReportSender : concurrency::OSThread {
+public:
+  ReportSender(NyanModule *nm) : concurrency::OSThread("Nyan Report Sender"),
+                                 nm(nm) {}
+  int32_t runOnce() override;
+
+private:
+  NyanModule *nm;
+};
+
+int32_t ReportSender::runOnce() {
+  NyanModule::report_sender_task(nm);
+  return met_reporting_period;
+}
 
 void debug_memory(void) {
   LOG_DEBUG("Heap size: %u", memGet.getHeapSize());
@@ -471,7 +486,6 @@ void NyanModule::printNyanProtobuf(const meshtastic_MeshPacket &mp,
   }
 }
 
-
 void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
                                         nyan_telemetry *telemetry) {
 
@@ -484,6 +498,9 @@ void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
   LOG_INFO("NyanTelemetryToSignalK()");
   debug_memory();
 
+  // It looks like the JSON library should delete all the new objects here,
+  // but I am a bit suspcious.
+
   JSONArray values; // SignalK values object
 
   meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(mp.from);
@@ -492,10 +509,12 @@ void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
               node->user.long_name);
 
     JSONObject station_name;
-    station_name["path"] = new JSONValue("name");
-    station_name["value"] = new JSONValue(node->user.long_name);
-
-    values.push_back(new JSONValue(station_name));
+    JSONValue path {"name"};
+    JSONValue value {node->user.long_name};
+    station_name["path"] = &path;
+    station_name["value"] = &value;
+    JSONValue snv (station_name);
+    values.push_back(&snv);
   }
 
   if (telemetry->has_latitude && telemetry->has_longitude) {
@@ -537,6 +556,12 @@ void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
     // SignalK seems to lack a ground wind direction key, even though it has
     // ground wind speed!!!
     GWD_value["path"] = new JSONValue("environment.wind.directionTrue");
+    GWD_value["value"] = new JSONValue(DegToRad(telemetry->GWD_mean));
+    values.push_back(new JSONValue(GWD_value));
+
+    JSONObject GWD_value2;
+    // I'll just make this key up.
+    GWD_value["path"] = new JSONValue("environment.wind.directionOverGround");
     GWD_value["value"] = new JSONValue(DegToRad(telemetry->GWD_mean));
 
     values.push_back(new JSONValue(GWD_value));
@@ -580,6 +605,9 @@ void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
   JSONObject SignalK;
   SignalK["context"] = new JSONValue(urn.c_str());
 
+  LOG_DEBUG("After context");
+  debug_memory();
+
   JSONObject source;
   source["label"] = new JSONValue("nyan");
   source["type"] = new JSONValue("nyan");
@@ -592,8 +620,8 @@ void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
   updates.push_back(new JSONValue(update));
   SignalK["updates"] = new JSONValue(updates);
 
-  JSONValue *JSONvalue = new JSONValue(SignalK);
-  string json_s = JSONvalue->Stringify() + "\n";
+  JSONValue JSONvalue(SignalK);
+  string json_s = JSONvalue.Stringify() + "\n";
 
   LOG_DEBUG("Memory after json creating, before delete.");
   debug_memory();
@@ -700,21 +728,7 @@ void read_INA3221() {
 #endif
 }
 
-/* Sample I2C Sensors */
 void NyanModule::sample_onboard_sensors(void) {
-  /*
-  Wire1.end();
-
-  bool set_ok;
-  set_ok =  Wire1.setSDA(I2C_SDA1);
-  set_ok &= Wire1.setSCL(I2C_SCL1);
-  if (!set_ok) {
-    LOG_ERROR("Could not set I2C pins.");
-  }
-
-  Wire1.begin();
-  */
-
   read_INA3221();
 }
 
@@ -761,7 +775,10 @@ void NyanModule::report_sender_task(void *params) {
   while(true) {
     LOG_DEBUG("NYAN reporter stack high water mark: %u",
               uxTaskGetStackHighWaterMark(NULL));
-    delay(met_reporting_period);
+
+    // Don't delay if running on main loop task
+    //    delay(met_reporting_period);
+
     nm->send_report();
 
     // Also print some useful info every so often.
@@ -799,14 +816,13 @@ NyanModule::NyanModule() : ProtobufModule("nyan",
 #endif
 
 #ifdef USE_NYAN_TEST_DATA
-  // FIXME: build the cli with ability to set this
+  // TODO: build the cli with ability to set this
   config.nyan.test_send = true;
   config.nyan.test_reporting_period = 600000;
 #endif
 
   // In bytes
-  //size_t stack_size = 3000;
-  size_t stack_size = 5000;
+  size_t stack_size = 2200;
 #ifndef ARCH_ESP32
   // FreeRTOS standard is words, but espressif made it bytes.
   stack_size /= 4;
@@ -830,14 +846,14 @@ NyanModule::NyanModule() : ProtobufModule("nyan",
   debug_memory();
 
   // In bytes
-  //  stack_size = 8000;
-  stack_size = 12000;
+  stack_size = 8000;
 
 #ifndef ARCH_ESP32
   // FreeRTOS standard is words, but espressif made it bytes.
-  //stack_size /= 4;
+  stack_size /= 4;
 #endif
 
+  /*
   create_return_val =
     xTaskCreate(NyanModule::report_sender_task,
                 "NYAN report sender",
@@ -854,6 +870,15 @@ NyanModule::NyanModule() : ProtobufModule("nyan",
     LOG_ERROR("NYAN reporter task create FAILED");
     // Probably not enough memory
   }
+
+  */
+
+  /* Try using meshtastic scheduler instead of FreeRTOS task for this.
+     It will not have so good timing, but avoids allocating a new stack.
+  */
+  new ReportSender(this);
+
   LOG_DEBUG("After create task");
   debug_memory();
 }
+
