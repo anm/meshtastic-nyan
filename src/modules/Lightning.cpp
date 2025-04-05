@@ -1,9 +1,10 @@
 // Author: River MacLeod
 
+#include "configuration.h"
+
 #ifdef USE_AS3935
 #include "Lightning.h"
 
-#include "configuration.h"
 #include "SparkFun_AS3935.h"
 
 // I2C address is set by DIP switches on the sensor board
@@ -30,7 +31,8 @@ void IRAM_ATTR AS3935_count_pulse(void) {
 uint32_t AS3935_measure_frequency(void) {
   uint32_t start_time, stop_time;
 
-  attachInterrupt(digitalPinToInterrupt(LIGHTNING_IRQ_PIN), AS3935_count_pulse, RISING);
+  attachInterrupt(digitalPinToInterrupt(LIGHTNING_IRQ_PIN),
+                  AS3935_count_pulse, RISING);
   AS3935_pulse_count = 0;
   start_time = micros();
   delay(1000);
