@@ -14,6 +14,8 @@ class NyanModule : public ProtobufModule<nyan_telemetry>,
                                       nyan_telemetry *telemetry) override;
   void NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
                               nyan_telemetry *telemetry);
+  void printNyanProtobuf(const meshtastic_MeshPacket &mp,
+                         nyan_telemetry *telemetry);
   static void sample_onboard_sensors(void);
 
   static void report_sender_task(void *params);

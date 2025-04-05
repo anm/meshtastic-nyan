@@ -429,16 +429,57 @@ void NyanModule::send_report() {
 
     NyanModule::NyanTelemetryToSignalK(*p, &telemetry);
   } else {
-    LOG_INFO("No valid data to report");
+    LOG_INFO("Not sending telemetry - nothing to report");
   }
 }
 
-/* Convert Nyan Telemery packets to SignalK and send to local SignalK
-   server. Maybe used fer received packets and own packets that are being sent
-   out. (Analogy: AIVDM, AIVDO).
- */
+void NyanModule::printNyanProtobuf(const meshtastic_MeshPacket &mp,
+                               nyan_telemetry *telemetry) {
+
+  LOG_INFO("Print Nyan Protobuf");
+
+  meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(mp.from);
+  if (node->has_user) {
+    LOG_DEBUG("Long name:%s", node->user.long_name);
+  }
+
+  if (telemetry->has_latitude && telemetry->has_longitude) {
+    LOG_INFO("Position: %f %f",
+             telemetry->latitude,
+             telemetry->longitude);
+  }
+
+  if (telemetry->has_GWS_mean) {
+    LOG_INFO("GWS_mean: %u", telemetry->GWS_mean);
+  }
+
+  if (telemetry->has_GWS_gust) {
+    LOG_INFO("GWS_gust: %u", telemetry->GWS_gust);
+  }
+
+  if (telemetry->has_GWD_mean) {
+    LOG_INFO("GWD_mean: %u", telemetry->GWD_mean);
+  }
+
+  if (telemetry->has_water_temperature) {
+    LOG_INFO("water_temperature: %fC", telemetry->water_temperature);
+  }
+
+  if (telemetry->has_nyan_supply_decivolts) {
+    LOG_INFO("nyan_supply_decivolts: %udV",
+             telemetry->nyan_supply_decivolts);
+  }
+}
+
+
 void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
                                         nyan_telemetry *telemetry) {
+
+#ifndef ARCH_ESP32
+  LOG_INFO("Skipping SignalK send because not on ESP32.");
+  // I think the pico is having memory issues with this.
+  return;
+#endif
 
   LOG_INFO("NyanTelemetryToSignalK()");
   debug_memory();
@@ -559,7 +600,7 @@ void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
 
   delete JSONvalue;
 
-  LOG_DEBUG("JSON string built from received Nyan message: ");
+  LOG_DEBUG("JSON string built from Nyan protobuf: ");
   LOG_DEBUG(json_s.c_str());
 
   signalk_send(json_s.c_str());
@@ -575,6 +616,8 @@ bool NyanModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
   screen->print("Nyan RXed");
   LOG_INFO("Received Nyan telemetry from node 0x%0x (Packet ID: 0x%x)",
            mp.from, mp.id);
+
+  printNyanProtobuf(mp, telemetry);
 
   NyanModule::NyanTelemetryToSignalK(mp, telemetry);
 
