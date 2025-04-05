@@ -9,17 +9,17 @@
 // SDA = 4
 // SCL = 5
 
-//#define I2C_SDA1 14
-//#define I2C_SCL1 15
+//#define I2C_SDA1 16
+//#define I2C_SCL1 17
+//#define INA3221_BUS Wire1
 
 // Use Nyan's INA stuff
 #define USE_INA3221
-//#define INA3221_BUS Wire1
+#define INA3221_ADDR 67
 
 #define I2C_SDA 16
 #define I2C_SCL 17
 #define INA3221_BUS Wire
-#define INA3221_ADDR 67
 
 #define USE_N2K
 
