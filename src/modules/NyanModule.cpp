@@ -658,6 +658,8 @@ int32_t NyanModule::runOnce() {
 INA3221 ina3221 = INA3221((ina3221_addr_t) INA3221_ADDR);
 #endif
 
+bool INA3221_setup_ok = false;
+
 void INA3221_setup(void) {
 #ifdef USE_INA3221
   LOG_INFO("INA3221_setup");
@@ -674,6 +676,7 @@ void INA3221_setup(void) {
 
   if (ina3221.getManufID() == 0x5449) {
     LOG_DEBUG("Read INA3221 Maufacturer ID OK.");
+    INA3221_setup_ok = true;
   } else {
     LOG_ERROR("Read INA3221 Maufacturer ID Failed.");
   }
@@ -684,6 +687,8 @@ void INA3221_setup(void) {
 
 void read_INA3221() {
 #ifdef USE_INA3221
+  if (! INA3221_setup_ok) return;
+
   float V_in = ina3221.getVoltage(INA3221_CH1);
   float I_in = ina3221.getCurrentCompensated(INA3221_CH1) / 1000.0;
   float V_5V = ina3221.getVoltage(INA3221_CH2);
