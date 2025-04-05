@@ -307,6 +307,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // Global switches to turn off features for a minimized build
 // -----------------------------------------------------------------------------
 
+
+// Nyan excludes to save memory
+#define MESHTASTIC_EXCLUDE_PAXCOUNTER 1
+#define MESHTASTIC_EXCLUDE_REMOTEHARDWARE 1
+#define MESHTASTIC_EXCLUDE_ADMIN 1
+#define MESHTASTIC_EXCLUDE_ATAK 1
+#define MESHTASTIC_EXCLUDE_CANNEDMESSAGES 1
+#define MESHTASTIC_EXCLUDE_DETECTIONSENSOR 1
+#define MESHTASTIC_EXCLUDE_NEIGHBORINFO 1
+#define MESHTASTIC_EXCLUDE_REMOTEHARDWARE 1
+#define MESHTASTIC_EXCLUDE_POWERSTRESS 1
+
 // #define MESHTASTIC_MINIMIZE_BUILD 1
 #ifdef MESHTASTIC_MINIMIZE_BUILD
 #define MESHTASTIC_EXCLUDE_MODULES 1
