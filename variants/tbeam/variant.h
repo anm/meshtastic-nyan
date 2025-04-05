@@ -31,8 +31,8 @@
 // Not tested but look like they might work on tbeam
 #define SDA 25
 #define SCL 14
-//#define I2C_SDA1 SDA
-//#define I2C_SCL1 SCL
+#define I2C_SDA1 SDA
+#define I2C_SCL1 SCL
 
 // Used for screen
 #define I2C_SDA 21
