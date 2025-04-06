@@ -311,7 +311,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // Nyan excludes to save memory
 #define MESHTASTIC_EXCLUDE_PAXCOUNTER 1
 #define MESHTASTIC_EXCLUDE_REMOTEHARDWARE 1
-#define MESHTASTIC_EXCLUDE_ADMIN 1
+//#define MESHTASTIC_EXCLUDE_ADMIN 1 // Disabling causes crash on ESP32
 #define MESHTASTIC_EXCLUDE_ATAK 1
 #define MESHTASTIC_EXCLUDE_CANNEDMESSAGES 1
 #define MESHTASTIC_EXCLUDE_DETECTIONSENSOR 1
