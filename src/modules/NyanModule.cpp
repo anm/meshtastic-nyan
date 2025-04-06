@@ -734,8 +734,8 @@ void NyanModule::sample_onboard_sensors(void) {
 
 void set_test_sensor_data(void) {
   // Add fake data
-  v.position_nmea.latitude = 56.020;
-  v.position_nmea.longitude = -3.197;
+  v.position_nmea.latitude = 42.020;
+  v.position_nmea.longitude = -69.197;
   v.position_nmea.COG = 88;
   v.position_nmea.SOG = 5;
   v.position_nmea.set_valid();
@@ -818,7 +818,7 @@ NyanModule::NyanModule() : ProtobufModule("nyan",
 #ifdef USE_NYAN_TEST_DATA
   // TODO: build the cli with ability to set this
   config.nyan.test_send = true;
-  config.nyan.test_reporting_period = 600000;
+  config.nyan.test_reporting_period = 10000;
 #endif
 
   // In bytes
