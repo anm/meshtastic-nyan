@@ -279,11 +279,13 @@ int32_t ButtonThread::runOnce()
 
         case BUTTON_EVENT_LONG_PRESSED: {
             LOG_BUTTON("Long press!");
+            /*
             powerFSM.trigger(EVENT_PRESS);
             if (screen) {
                 screen->startAlert("Shutting down...");
             }
             playBeep();
+            */
             break;
         }
 
@@ -291,9 +293,12 @@ int32_t ButtonThread::runOnce()
         // may wake the board immediatedly.
         case BUTTON_EVENT_LONG_RELEASED: {
             LOG_INFO("Shutdown from long press");
+            LOG_INFO("Shutdown disabled by hack.");
+            /*
             playShutdownMelody();
             delay(3000);
             power->shutdown();
+            */
             break;
         }
 
