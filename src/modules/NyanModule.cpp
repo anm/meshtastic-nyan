@@ -234,8 +234,8 @@ void signalk_test(NyanVessel v) {
 
   static WiFiClient tcp;
 
-  const char *host = "nyan-host-0.river.cat";
-  const uint16_t port = 8375;
+  const char *signalk_host = "nyan-host-0.river.cat";
+  const uint16_t signalk_tcp_port = 8375;
 
   // SignalK security token
   // Generate with: signalk-generate-token -u nyan -e 10y -s
@@ -250,7 +250,7 @@ void signalk_test(NyanVessel v) {
   }
 
   if (! tcp.connected()) {
-    if (tcp.connect(host, port)) {
+    if (tcp.connect(signalk_host, signalk_tcp_port)) {
       LOG_INFO("SignalK TCP connected");
     } else {
       LOG_WARN("Connecting SignalK TCP failed.");
