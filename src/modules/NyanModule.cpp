@@ -454,8 +454,8 @@ void NyanModule::printNyanProtobuf(const meshtastic_MeshPacket &mp,
   LOG_INFO("Print Nyan Protobuf");
 
   meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(mp.from);
-  if (node->has_user) {
-    LOG_DEBUG("Long name:%s", node->user.long_name);
+  if ((node != NULL) && node->has_user) {
+    LOG_DEBUG("Long name: %s", node->user.long_name);
   }
 
   if (telemetry->has_latitude && telemetry->has_longitude) {
@@ -501,20 +501,17 @@ void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
   // It looks like the JSON library should delete all the new objects here,
   // but I am a bit suspcious.
 
-  JSONArray values; // SignalK values object
+  JSONArray values{}; // SignalK values object
 
   meshtastic_NodeInfoLite *node = nodeDB->getMeshNode(mp.from);
-  if (node->has_user) {
+  if ((node != NULL) && node->has_user) {
     LOG_DEBUG("SignalK: setting station name from NodeDB; name: %s",
               node->user.long_name);
 
-    JSONObject station_name;
-    JSONValue path {"name"};
-    JSONValue value {node->user.long_name};
-    station_name["path"] = &path;
-    station_name["value"] = &value;
-    JSONValue snv (station_name);
-    values.push_back(&snv);
+    JSONObject station_name{};
+    station_name["path"] = new JSONValue {"name"};
+    station_name["value"] = new JSONValue {node->user.long_name};
+    values.push_back(new JSONValue {station_name});
   }
 
   if (telemetry->has_latitude && telemetry->has_longitude) {
@@ -522,11 +519,11 @@ void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
              telemetry->latitude,
              telemetry->longitude);
 
-    JSONObject position;
+    JSONObject position{};
     position["latitude"]  = new JSONValue(telemetry->latitude);
     position["longitude"] = new JSONValue(telemetry->longitude);
 
-    JSONObject pos_value;
+    JSONObject pos_value{};
     pos_value["path"] = new JSONValue("navigation.position");
     pos_value["value"] = new JSONValue(position);
 
@@ -536,14 +533,14 @@ void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
   if (telemetry->has_GWS_mean) {
     LOG_INFO("telemetry GWS_mean: %u", telemetry->GWS_mean);
 
-    JSONObject GWS_value;
+    JSONObject GWS_value{};
     GWS_value["path"] = new JSONValue("environment.wind.speedOverGround");
     GWS_value["value"] = new JSONValue(KnotsToms(telemetry->GWS_mean));
     values.push_back(new JSONValue(GWS_value));
 
     // Also send speedTrue. This is wrong, but SignalK is generally wrong
     // about a lot of stuff so I may need to be wrong too.
-    JSONObject GWS_value2;
+    JSONObject GWS_value2{};
     GWS_value2["path"] = new JSONValue("environment.wind.speedTrue");
     GWS_value2["value"] = new JSONValue(KnotsToms(telemetry->GWS_mean));
     values.push_back(new JSONValue(GWS_value2));
@@ -552,14 +549,14 @@ void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
   if (telemetry->has_GWD_mean) {
     LOG_INFO("telemetry GWD_mean: %u", telemetry->GWD_mean);
 
-    JSONObject GWD_value;
+    JSONObject GWD_value{};
     // SignalK seems to lack a ground wind direction key, even though it has
     // ground wind speed!!!
     GWD_value["path"] = new JSONValue("environment.wind.directionTrue");
     GWD_value["value"] = new JSONValue(DegToRad(telemetry->GWD_mean));
     values.push_back(new JSONValue(GWD_value));
 
-    JSONObject GWD_value2;
+    JSONObject GWD_value2{};
     // I'll just make this key up.
     GWD_value["path"] = new JSONValue("environment.wind.directionOverGround");
     GWD_value["value"] = new JSONValue(DegToRad(telemetry->GWD_mean));
@@ -570,7 +567,7 @@ void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
   if (telemetry->has_water_temperature) {
     LOG_INFO("telemetry water_temperature: %fC", telemetry->water_temperature);
 
-    JSONObject water_temperature_value;
+    JSONObject water_temperature_value{};
     water_temperature_value["path"]  =
       new JSONValue("environment.water.temperature");
     water_temperature_value["value"] =
@@ -583,7 +580,7 @@ void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
     LOG_INFO("telemetry nyan_supply_decivolts: %udV",
              telemetry->nyan_supply_decivolts);
 
-    JSONObject nyan_supply_voltage_value;
+    JSONObject nyan_supply_voltage_value{};
 
     // This is not correct - nyan supply is not a battery. I think it's the
     // closest SignalK has.
@@ -602,26 +599,26 @@ void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
   //  show the wind, so not really.
   // String urn = "atons.urn:mrn:nyan:" + String(mp.from);
 
-  JSONObject SignalK;
+  JSONObject SignalK{};
   SignalK["context"] = new JSONValue(urn.c_str());
 
   LOG_DEBUG("After context");
   debug_memory();
 
-  JSONObject source;
+  JSONObject source{};
   source["label"] = new JSONValue("nyan");
   source["type"] = new JSONValue("nyan");
 
-  JSONObject update;
+  JSONObject update{};
   update["source"] = new JSONValue(source);
   update["values"] = new JSONValue(values);
 
-  JSONArray updates;
+  JSONArray updates{};
   updates.push_back(new JSONValue(update));
   SignalK["updates"] = new JSONValue(updates);
 
-  JSONValue JSONvalue(SignalK);
-  string json_s = JSONvalue.Stringify() + "\n";
+  JSONValue* JSONvalue = new JSONValue(SignalK);
+  string json_s = JSONvalue->Stringify() + "\n";
 
   LOG_DEBUG("Memory after json creating, before delete.");
   debug_memory();
@@ -777,7 +774,7 @@ void NyanModule::report_sender_task(void *params) {
               uxTaskGetStackHighWaterMark(NULL));
 
     // Don't delay if running on main loop task
-    //    delay(met_reporting_period);
+    delay(met_reporting_period);
 
     nm->send_report();
 
@@ -853,7 +850,6 @@ NyanModule::NyanModule() : ProtobufModule("nyan",
   stack_size /= 4;
 #endif
 
-  /*
   create_return_val =
     xTaskCreate(NyanModule::report_sender_task,
                 "NYAN report sender",
@@ -871,14 +867,13 @@ NyanModule::NyanModule() : ProtobufModule("nyan",
     // Probably not enough memory
   }
 
-  */
 
   /* Try using meshtastic scheduler instead of FreeRTOS task for this.
      It will not have so good timing, but avoids allocating a new stack.
   */
-  new ReportSender(this);
+  // It ran without the specified delay. Meh.
+  //  new ReportSender(this);
 
   LOG_DEBUG("After create task");
   debug_memory();
 }
-
