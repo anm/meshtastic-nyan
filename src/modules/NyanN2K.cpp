@@ -156,6 +156,10 @@ void HandleWindSpeed(const tN2kMsg &N2kMsg) {
     case N2kWind_Apparent:
       v.AWS.set(WindSpeed);
       v.AWA.set(WindAngle);
+      break;
+
+    default:
+      LOG_DEBUG("Unhandled wind reference");
     }
   } else {
     LOG_ERROR("N2K: ParseN2kWindSpeed failed.");
@@ -184,6 +188,9 @@ void HandleHeading(const tN2kMsg &N2kMsg) {
         LOG_DEBUG("N2k got magnetic heading %f", RadToDeg(Heading));
       }
       break;
+
+    default:
+      LOG_WARN("Unknown heading reference.");
     }
   }
 }
@@ -200,10 +207,11 @@ void HandleCOGSOG(const tN2kMsg &N2kMsg) {
       v.position_nmea.COG = RadToDeg(COG);
       v.position_nmea.SOG = msToKnots(SOG);
       LOG_DEBUG("N2k: COG: %f, SOG: %f", RadToDeg(COG), msToKnots(SOG));
+      break;
+    default: {}
     }
   }
 }
-
 
 // GNSS Position Data
 void Handle129029(const tN2kMsg &N2kMsg) {
@@ -242,7 +250,6 @@ void Handle129029(const tN2kMsg &N2kMsg) {
 
 // Position, Rapid Update (Short message, Lat / Lon only)
 void Handle129025(const tN2kMsg &N2kMsg) {
-  unsigned char SID;
   double latitude, longitude;
 
   if (ParseN2kPositionRapid(N2kMsg, latitude, longitude)) {
@@ -277,6 +284,7 @@ void Handle130316(const tN2kMsg &N2kMsg) {
       v.water_temperature.set(KelvinToC(ActualTemperature));
       LOG_DEBUG("N2K: water temp %fC", KelvinToC(ActualTemperature));
       break;
+    default: {}
     }
   }
 }
