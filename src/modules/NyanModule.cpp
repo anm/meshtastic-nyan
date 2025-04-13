@@ -432,6 +432,22 @@ void NyanModule::send_report() {
               telemetry.nyan_supply_decivolts);
   }
 
+#ifdef USE_AS3935
+  auto s = lightning_counts.get_strokes();
+  auto d = lightning_counts.get_distance();
+  if (s > 0) {
+    send = true;
+    telemetry.nyan_lightning_strokes = s;
+    telemetry.has_nyan_lightning_strokes = true;
+    telemetry.nyan_lightning_distance = d;
+    telemetry.has_nyan_lightning_distance = true;
+    LOG_DEBUG("Sending lightning strokes %u, distance: %u",
+              s, d);
+  }
+
+  lightning_counts.reset();
+#endif
+
   if (send) {
     // So people have our name
     nodeInfoModule->sendOurNodeInfo();

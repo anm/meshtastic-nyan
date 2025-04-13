@@ -21,6 +21,8 @@ bool AS3935_setup_ok = false;
 
 SparkFun_AS3935 lightning(AS3935_ADDR);
 
+LightningCounter lightning_counts {};
+
 // Used for oscillator measurement
 volatile uint32_t AS3935_pulse_count = 0;
 
@@ -157,29 +159,37 @@ void AS3935_check_lightning(void) {
     int intVal = lightning.readInterruptReg();
 
     switch (intVal) {
-      // TODO: Increment counters for this reporting period.
-
     case NOISE_INT:
       LOG_INFO("Lightning Sensor: Noise floor too high");
+      lightning_counts.inc_noise();
       break;
 
     case DISTURBER_INT:
       LOG_INFO("Lightning Sensor: Disturber (QRM) detected");
+      lightning_counts.inc_qrm();
       break;
 
     case LIGHTNING_INT:
       LOG_INFO("Lightning Sensor: Lightning detected!");
+      lightning_counts.inc_strokes();
+
+      LOG_INFO("Lightning strokes (in period, since boot): %u, %u",
+               lightning_counts.get_strokes(),
+               lightning_counts.get_strokes_ever());
 
       distance = lightning.distanceToStorm();
       LOG_INFO("Lightning distance approx %u km", distance);
+      lightning_counts.note_distance(distance);
 
       // TODO: Send report immediatly, I think.
       break;
 
     default:
-      LOG_ERROR("Lightning Sensor: Unknown value in interrupt register: %u", intVal);
+      LOG_ERROR("Lightning Sensor: Unknown value in interrupt register: %u",
+                intVal);
       break;
     }
+
   }
 }
 #endif
