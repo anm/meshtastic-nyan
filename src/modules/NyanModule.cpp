@@ -2,6 +2,7 @@
 #include <assert.h>
 
 #include <WiFi.h>
+#include "mesh/wifi/WiFiAPClient.h"
 #include "os_status.h"
 #include "mesh/NodeDB.h"
 
@@ -96,13 +97,19 @@ void NMEA_TCP_read() {
   const char *nmea_tcp_host = "shore.halekai.uk";
   const uint16_t nmea_tcp_port = 10110;
 
-  if (!WiFi.isConnected()) {
+  bool wifi = (isWifiAvailable() && WiFi.isConnected());
+  if (! wifi) {
     LOG_INFO("WiFi not connected");
     return;
   }
 
+  const uint32_t timeout = 1000;
   if (! tcp.connected()) {
-    if (tcp.connect(nmea_tcp_host, nmea_tcp_port)) {
+    if (tcp.connect(nmea_tcp_host, nmea_tcp_port
+#ifdef ARCH_ESP32
+                    , timeout
+#endif
+                    )) {
       LOG_INFO("TCP connected");
     } else {
       LOG_WARN("Connecting TCP NMEA failed.");
@@ -222,133 +229,29 @@ void sample_NMEA_sensors(NyanVessel& v) {
   }
 }
 
-void signalk_test(NyanVessel v) {
-  /*
-   * Connect to SignalK by tcp and send delta message.
-   *
-   * Qs: will OpenCPN accept these directly?
-   * UDP?
-  */
-
-  int node_id = 0;
-
-  static WiFiClient tcp;
-
-  const char *signalk_host = "nyan-host-0.river.cat";
-  const uint16_t signalk_tcp_port = 8375;
-
-  // SignalK security token
-  // Generate with: signalk-generate-token -u nyan -e 10y -s
-  // /home/signalk/.signalk/security.json
-  // Note: Not used in the end, because it turns out SignalK doesn't even
-  // implement this over TCP, despite it being specified in the docs!
-  //  String token = "...";
-
-  if (!WiFi.isConnected()) {
-    LOG_INFO("WiFi not connected");
-    return;
-  }
-
-  if (! tcp.connected()) {
-    if (tcp.connect(signalk_host, signalk_tcp_port)) {
-      LOG_INFO("SignalK TCP connected");
-    } else {
-      LOG_WARN("Connecting SignalK TCP failed.");
-      return;
-    }
-  }
-
-  String s =
-    R"({"context": "vessels.urn:mrn:nyan:)" + String(node_id) + R"(",)"
-
-    //    R"("token": ")" + token + R"(",)"
-
-    R"("updates": [{"source": {"label": "nyan", "type": "nyan"},)"
-
-    // Timestamp for local data probably no better than letting SignalK do it on arrival
-    // Timestamp for LoRa received data should probably come from the source
-    //    R"("timestamp": ")" + String(timestamp) + R"(",)" // e.g. 2015-01-07T07:18:44Z
-    R"("values": [)";
-
-  // Path reference: http://signalk.org/specification/
-
-  Position pos;
-  bool havePosition;
-  havePosition = v.getPosition(&pos);
-  if (havePosition) {
-    s +=
-      R"({"path": "navigation.position", "value": {"latitude": )" +
-      String(pos.latitude) + R"(, "longitude": )" + String(pos.longitude) + "}},";
-
-    LOG_DEBUG("pos.latitude is %s by arduino, %f by printf", String(pos.latitude), pos.latitude);
-  }
-
-  LOG_DEBUG("v.GWS.stats.quality(): %f v.GWS.stats.mean(): %f",
-            v.GWS.stats.quality(), v.GWS.stats.mean());
-
-  if (v.GWS.stats.quality() > 0.1 && v.GWD.stats.quality() > 0.1) {
-    LOG_DEBUG("SignalK: sending ground wind");
-
-    R"({"path": "environment.wind.speedOverGround", "meta" : {"units": "C"}, "value": )"
-        + String(v.GWS.stats.mean()) + "}"
-      ",";
-      R"({"path": "environment.wind.directionTrue", "meta" : {"units": "C"}, "value": )"
-        + String(v.GWD.stats.mean()) + "}"
-      ",";
-  }
-
-  /*
-    environment/wind/directionTrue
-    environment/wind/angleTrueGround
-    environment/outside/pressure (Pa)
-    environment/outside/relativeHumidity
-  */
-
-  if (v.water_temperature.valid()) {
-    s +=
-      R"({"path": "environment.water.temperature", "meta" : {"units": "C"}, "value": )"
-      + String(v.water_temperature.get()) + "}"
-      ",";
-  }
-
-  if (v.water_depth.valid()) {
-    s +=
-      R"({"path": "environment.depth.belowSurface", "value": )" + String(v.water_depth.get()) + "}"
-      ",";
-  }
-
-  if (v.water_depth_below_keel.valid()) {
-    s +=
-      R"({"path": "environment.depth.belowKeel", "value": )" + String(v.water_depth.get()) + "}"
-      ",";
-  }
-
-  s +=
-    // This is mostly here to have a guaranteed item at the end, that doesn't
-    // have a comma after it, because JSON :(
-    R"({"path": "nyan.uptime", "value": )" + String(millis()) + "}"
-    "]}]}\r\n";
-
-  LOG_INFO(s.c_str());
-  tcp.print(s);
-}
-
 /*
  * Connect to SignalK by tcp and send the provided JSON string.
  */
 void signalk_send(const char *json) {
-  static WiFiClient tcp;
+  static WiFiClient tcp{};
 
   const char *host = "nyan-host-0.river.cat";
   const uint16_t port = 8375;
 
-  if (!WiFi.isConnected()) {
+  bool wifi = (isWifiAvailable() && WiFi.isConnected());
+
+  if (! wifi) {
     LOG_WARN("WiFi not connected for SignalK send.");
     return;
   }
 
+  const uint32_t timeout = 1000;
   if (! tcp.connected()) {
-    if (tcp.connect(host, port)) {
+    if (tcp.connect(host, port
+#ifdef ARCH_ESP32
+                    , timeout
+#endif
+                    )) {
       LOG_INFO("SignalK TCP connected.");
     } else {
       LOG_WARN("Connecting SignalK TCP failed.");
@@ -512,6 +415,16 @@ void NyanModule::NyanTelemetryToSignalK(const meshtastic_MeshPacket &mp,
   // I think the pico is having memory issues with this.
   return;
 #endif
+
+  /* Seems to be not enough memory for making JSON and running bluetooth.
+   * Meshtastic will only run wifi or bluetooth.
+   * Checking for WiFi should avoid using too much memory.
+   */
+  bool wifi = (isWifiAvailable() && WiFi.isConnected());
+  if (! wifi) {
+    LOG_INFO("Skipping SignalK: no WiFi.");
+    return;
+  }
 
   LOG_INFO("NyanTelemetryToSignalK()");
   debug_memory();
@@ -688,20 +601,17 @@ int32_t NyanModule::runOnce() {
   get_position_fixed(v);
   get_local_GPS(v);
 
-  sample_onboard_sensors();
-
 #ifdef USE_AS3935
   AS3935_check_lightning();
 #endif
 
-  return 3000; // period in milliseconds
+  return 500; // period in milliseconds
 }
 
 #ifdef USE_INA3221
 INA3221 ina3221 = INA3221((ina3221_addr_t) INA3221_ADDR);
-#endif
-
 bool INA3221_setup_ok = false;
+#endif
 
 void INA3221_setup(void) {
 #ifdef USE_INA3221
@@ -837,7 +747,7 @@ NyanModule::NyanModule() : ProtobufModule("nyan",
 #endif
 
   // In bytes
-  size_t stack_size = 2200;
+  size_t stack_size = 3000;
 #ifndef ARCH_ESP32
   // FreeRTOS standard is words, but espressif made it bytes.
   stack_size /= 4;
@@ -861,7 +771,7 @@ NyanModule::NyanModule() : ProtobufModule("nyan",
   debug_memory();
 
   // In bytes
-  stack_size = 8000;
+  stack_size = 7000;
 
 #ifndef ARCH_ESP32
   // FreeRTOS standard is words, but espressif made it bytes.
