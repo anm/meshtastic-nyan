@@ -15,16 +15,14 @@ const uint8_t LIGHTNING_INT  = 0x08;
 const uint8_t DISTURBER_INT  = 0x04;
 const uint8_t NOISE_INT      = 0x01;
 
+SparkFun_AS3935 lightning(AS3935_ADDR);
+LightningCounter lightning_counts{};
 // Indicate if setup worked, so can avoid repeatedly trying to read a broken /
 // missing sensor.
-bool AS3935_setup_ok = false;
-
-SparkFun_AS3935 lightning(AS3935_ADDR);
-
-LightningCounter lightning_counts {};
+static bool AS3935_setup_ok = false;
 
 // Used for oscillator measurement
-volatile uint32_t AS3935_pulse_count = 0;
+static volatile uint32_t AS3935_pulse_count = 0;
 
 void IRAM_ATTR AS3935_count_pulse(void) {
   ++AS3935_pulse_count;
@@ -189,7 +187,6 @@ void AS3935_check_lightning(void) {
                 intVal);
       break;
     }
-
   }
 }
 #endif

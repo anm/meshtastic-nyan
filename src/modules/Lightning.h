@@ -19,7 +19,7 @@ struct LightningCounter {
     distance = d;
   }
 
-  void get_distance() {
+  uint8_t get_distance() {
     return distance;
   }
 
@@ -61,3 +61,5 @@ struct LightningCounter {
     distance = 0;
   }
 };
+
+extern LightningCounter lightning_counts;

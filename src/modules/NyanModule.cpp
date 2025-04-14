@@ -435,12 +435,14 @@ void NyanModule::send_report() {
 #ifdef USE_AS3935
   auto s = lightning_counts.get_strokes();
   auto d = lightning_counts.get_distance();
+
+  // Might want to make this bigger to avoid false positives
   if (s > 0) {
     send = true;
-    telemetry.nyan_lightning_strokes = s;
-    telemetry.has_nyan_lightning_strokes = true;
-    telemetry.nyan_lightning_distance = d;
-    telemetry.has_nyan_lightning_distance = true;
+    telemetry.lightning_strokes = s;
+    telemetry.has_lightning_strokes = true;
+    telemetry.lightning_distance = d;
+    telemetry.has_lightning_distance = true;
     LOG_DEBUG("Sending lightning strokes %u, distance: %u",
               s, d);
   }
