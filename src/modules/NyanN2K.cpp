@@ -68,7 +68,7 @@ const uint8_t CAN_SPI_SS_PIN = 14; // D5
 const unsigned char MCP_CLOCK_SPEED = MCP_16MHz;
 const uint16_t RX_BUFFER_SIZE = 256;
 
-tNMEA2000_mcp *n2k;
+static tNMEA2000_mcp *n2k = NULL;
 
 void HandleNMEA2000Msg(const tN2kMsg &N2kMsg);
 
@@ -484,5 +484,6 @@ void nyan_N2K_setup() {
 }
 
 void nyan_N2K_loop() {
+  if (n2k == NULL) return;
   n2k->ParseMessages();
 }

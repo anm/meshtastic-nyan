@@ -234,7 +234,7 @@ bool parse_sentence(const char *buf) {
   */
 
 
-tNMEA0183 NMEA0183_Serial;
+tNMEA0183 NMEA0183_Serial{};
 
 void NMEA_serial_setup(void) {
 #ifdef USE_NMEA_SERIAL

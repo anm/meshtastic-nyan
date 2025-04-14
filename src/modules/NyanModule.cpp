@@ -35,7 +35,7 @@
 #include "NyanVessel.h"
 #include "wind.h"
 
-NyanVessel v;
+NyanVessel v{};
 
 /*
   Wind Reports
@@ -81,9 +81,9 @@ void debug_memory(void) {
    Add data to ship data model.
 */
 void NMEA_TCP_read() {
-  tNMEA0183Msg NMEA0183Msg;
-  tNMEA0183 NMEA0183;
-  static WiFiClient tcp;
+  tNMEA0183Msg NMEA0183Msg{};
+  tNMEA0183 NMEA0183{};
+  static WiFiClient tcp{};
 
   const uint8_t NMEA_BUFFER_LENGTH = 85;
   // Including terminating charaters (CR LF)
@@ -369,7 +369,7 @@ void NyanModule::send_report() {
 
   // TODO May want to replace with average position, to correspond with
   // average wind, etc.
-  Position p;
+  Position p{};
   if (v.getPosition(&p)) {
     send = true;
 
@@ -884,7 +884,6 @@ NyanModule::NyanModule() : ProtobufModule("nyan",
     LOG_ERROR("NYAN reporter task create FAILED");
     // Probably not enough memory
   }
-
 
   /* Try using meshtastic scheduler instead of FreeRTOS task for this.
      It will not have so good timing, but avoids allocating a new stack.
